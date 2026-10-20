@@ -21,7 +21,7 @@ Execution plan: slices 1-3 run serially. After slice 3, slices 4, 5 and 6 run as
   Learner check: Create a board with a real PDF, reload the page, see the card, open it and scroll the PDF.
   Commit: `Scaffold app, storage, dashboard and PDF viewer`
 
-- [ ] **2. Split workspace with an Excalidraw notes pane that saves**
+- [x] **2. Split workspace with an Excalidraw notes pane that saves**
   Becomes usable: The board page shows PDF and notes side by side with a draggable divider; either pane can be closed and reopened; you can draw in the notes and it is still there after reload.
   Why now: Gives the highlight kernel somewhere to land, and tests the Excalidraw integration risk (client-only load, CSS) before building on it.
   PRD ref: `prd.md > Split workspace`, `prd.md > Notes tools` (basic), `prd.md > Save, resume, download` (notes persistence)

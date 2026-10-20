@@ -4,8 +4,15 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { getBoard, getPdf, updateBoard } from "@/lib/storage";
-import type { Board } from "@/lib/types";
+import type { Board, PaneVisibility } from "@/lib/types";
+import dynamic from "next/dynamic";
 import PdfViewer from "@/components/pdf/PdfViewer";
+import SplitLayout from "@/components/workspace/SplitLayout";
+
+// Excalidraw touches `window`, so it only loads in the browser.
+const NotesCanvas = dynamic(() => import("@/components/notes/NotesCanvas"), {
+  ssr: false,
+});
 
 export default function BoardPage() {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +33,18 @@ export default function BoardPage() {
     })();
   }, [id]);
 
+  function save(patch: Partial<Board>) {
+    setBoard((b) => (b ? { ...b, ...patch } : b));
+    updateBoard(id, patch);
+  }
+
+  function toggle(key: keyof PaneVisibility) {
+    if (!board) return;
+    const next = { ...board.paneVisibility, [key]: !board.paneVisibility[key] };
+    if (!next.pdf && !next.notes) return; // keep at least one pane open
+    save({ paneVisibility: next });
+  }
+
   if (missing) {
     return (
       <main className="p-6">
@@ -45,11 +64,32 @@ export default function BoardPage() {
           &larr; Boards
         </Link>
         <h1 className="truncate font-medium">{board.name}</h1>
+        <div className="ml-auto flex gap-2 text-sm">
+          {(["pdf", "notes"] as const).map((key) => (
+            <button
+              key={key}
+              onClick={() => toggle(key)}
+              aria-pressed={board.paneVisibility[key]}
+              className="rounded-md border border-zinc-300 px-2.5 py-1 aria-pressed:bg-indigo-600 aria-pressed:text-white dark:border-zinc-700"
+            >
+              {key === "pdf" ? "PDF" : "Notes"}
+            </button>
+          ))}
+        </div>
       </header>
       <div className="min-h-0 flex-1">
-        <PdfViewer
-          blob={pdf}
-          onLoaded={(pageCount) => updateBoard(id, { pageCount })}
+        <SplitLayout
+          ratio={board.dividerRatio}
+          visibility={board.paneVisibility}
+          onRatioChange={(dividerRatio) => save({ dividerRatio })}
+          onVisibilityChange={(paneVisibility) => save({ paneVisibility })}
+          pdf={
+            <PdfViewer
+              blob={pdf}
+              onLoaded={(pageCount) => updateBoard(id, { pageCount })}
+            />
+          }
+          notes={<NotesCanvas boardId={id} />}
         />
       </div>
     </div>
