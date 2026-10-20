@@ -105,6 +105,22 @@ export default function BoardPage() {
     if (!board?.paneVisibility.notes) save({ paneVisibility: { pdf: true, notes: true } });
   }
 
+  async function importDiagram(img: { dataURL: string; width: number; height: number }) {
+    if (!api) {
+      setNotice("The notes aren't ready yet. Try again in a moment.");
+      return;
+    }
+    try {
+      const { addDiagramImage } = await import("@/components/notes/diagram");
+      addDiagramImage(api, img);
+    } catch (e) {
+      console.error("addDiagramImage failed", e);
+      setNotice("Couldn't add the diagram to the board. Please try again.");
+      return;
+    }
+    if (!board?.paneVisibility.notes) save({ paneVisibility: { pdf: true, notes: true } });
+  }
+
   function toggle(key: keyof PaneVisibility) {
     if (!board) return;
     const next = { ...board.paneVisibility, [key]: !board.paneVisibility[key] };
@@ -165,6 +181,7 @@ export default function BoardPage() {
               initialZoom={board.pdfZoom ?? null}
               onZoomChange={(pdfZoom) => updateBoard(id, { pdfZoom })}
               onExport={exportToNotes}
+              onImportDiagram={importDiagram}
               onLoaded={(pageCount) => updateBoard(id, { pageCount })}
             />
           }

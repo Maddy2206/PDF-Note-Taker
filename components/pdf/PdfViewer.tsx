@@ -5,6 +5,7 @@ import type { PDFDocumentProxy } from "pdfjs-dist";
 import type { Highlight, HighlightRect } from "@/lib/types";
 import type { FontId } from "@/lib/handwriting-fonts";
 import SelectionPopout from "./SelectionPopout";
+import DiagramSelect, { type DiagramImage } from "./DiagramSelect";
 import "pdfjs-dist/web/pdf_viewer.css";
 
 const MIN_ZOOM = 0.4;
@@ -25,11 +26,13 @@ function PageView({
   pageNumber,
   highlights,
   scale,
+  onClip,
 }: {
   pdf: PDFDocumentProxy;
   pageNumber: number;
   highlights: Highlight[];
   scale: number;
+  onClip?: (img: DiagramImage) => void | Promise<void>;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -116,6 +119,7 @@ function PageView({
         className="textLayer absolute left-0 top-0"
         style={{ width: size.w, height: size.h, ["--total-scale-factor" as string]: scale }}
       />
+      {onClip && <DiagramSelect pdf={pdf} pageNumber={pageNumber} onImport={onClip} />}
     </div>
   );
 }
@@ -176,6 +180,7 @@ export default function PdfViewer({
   onZoomChange,
   onLoaded,
   onExport,
+  onImportDiagram,
 }: {
   blob: Blob;
   highlights?: Highlight[];
@@ -183,7 +188,19 @@ export default function PdfViewer({
   onZoomChange?: (zoom: number | null) => void;
   onLoaded?: (pageCount: number) => void;
   onExport?: (sel: PendingSelection, color: string, font: FontId) => void;
+  onImportDiagram?: (img: DiagramImage) => void | Promise<void>;
 }) {
+  const [clipMode, setClipMode] = useState(false);
+
+  useEffect(() => {
+    if (!clipMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setClipMode(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [clipMode]);
+
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -300,6 +317,26 @@ export default function PdfViewer({
       >
         Fit width
       </button>
+      {onImportDiagram && (
+        <>
+          <button
+            onClick={() => {
+              window.getSelection()?.removeAllRanges();
+              setPending(null);
+              setClipMode((v) => !v);
+            }}
+            aria-pressed={clipMode}
+            className="ml-3 rounded border border-indigo-300 px-2 py-0.5 font-medium text-indigo-700 hover:bg-indigo-50 aria-pressed:border-indigo-600 aria-pressed:bg-indigo-600 aria-pressed:text-white dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-zinc-800"
+          >
+            Clip diagram
+          </button>
+          {clipMode && (
+            <span className="ml-2 text-zinc-600 dark:text-zinc-300">
+              Drag a box around the diagram (Esc to exit)
+            </span>
+          )}
+        </>
+      )}
     </div>
     <div
       ref={containerRef}
@@ -313,6 +350,7 @@ export default function PdfViewer({
           pdf={pdf}
           pageNumber={i + 1}
           scale={scale}
+          onClip={clipMode ? onImportDiagram : undefined}
           highlights={highlights.filter((h) => h.page === i + 1)}
         />
       ))}
