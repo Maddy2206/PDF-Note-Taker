@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDF Note taker — Spec</title>
+<style>
+  :root{--bg:#fafaf9;--fg:#1c1917;--muted:#78716c;--card:#fff;--line:#e7e5e4;--accent:#4f46e5;--soft:#eef2ff}
+  @media (prefers-color-scheme:dark){:root{--bg:#141413;--fg:#f5f5f4;--muted:#a8a29e;--card:#1c1b1a;--line:#2e2c2a;--accent:#818cf8;--soft:#1e1d3a}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,-apple-system,Segoe UI,sans-serif}
+  main{max-width:920px;margin:0 auto;padding:32px 16px 80px}
+  h1{font-size:28px;margin:0 0 4px} h2{font-size:20px;margin:40px 0 12px}
+  .sub{color:var(--muted);margin:0 0 20px}
+  .card,details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:10px 0}
+  summary{cursor:pointer;font-weight:600}
+  code{background:var(--soft);color:var(--accent);padding:1px 6px;border-radius:6px;font-size:.9em}
+  ul{padding-left:20px;margin:8px 0}
+  svg{width:100%;height:auto} svg text{fill:var(--fg);font:13px system-ui,sans-serif}
+  svg .b{fill:var(--card);stroke:var(--line);stroke-width:1.5} svg .h{fill:var(--soft);stroke:var(--accent);stroke-width:2}
+  svg .a{stroke:var(--muted);stroke-width:1.5;fill:none}
+  .steps{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+  .steps button{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:8px;padding:6px 10px;cursor:pointer;font:inherit}
+  .steps button[aria-pressed=true]{background:var(--accent);color:#fff;border-color:var(--accent)}
+  table{border-collapse:collapse;width:100%;font-size:14px} td,th{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+  pre{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;overflow:auto;font-size:13px}
+  .tag{font-size:12px;padding:2px 8px;border-radius:99px;background:var(--soft);color:var(--accent);margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+<h1>PDF Note taker — Technical Spec</h1>
+<p class="sub">Visual companion. Canonical source: <code>devpost/spec.md</code>. Implements <code>prd.md</code>.</p>
+
+<div class="card"><b>In plain language:</b> a website that runs entirely in your browser. A PDF reader (pdf.js) on the left, an Excalidraw notes canvas on the right. Highlights and clipped diagrams are placed onto the canvas; everything is saved in the browser's own database (IndexedDB). No server, no login.</div>
+
+<h2>Architecture</h2>
+<svg viewBox="0 0 880 300" role="img" aria-label="Browser app: Dashboard and Board page, PDF viewer, notes canvas, storage layer, IndexedDB; export to PDF">
+  <defs><marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#78716c"/></marker></defs>
+  <rect class="b" x="5" y="5" width="870" height="290" rx="12" fill="none"/><text x="20" y="25">Your browser (Vercel serves the static app once; no backend)</text>
+  <rect class="b" x="25" y="50" width="150" height="60" rx="8"/><text x="100" y="76" text-anchor="middle">Dashboard</text><text x="100" y="94" text-anchor="middle">/dashboard</text>
+  <rect class="b" x="25" y="170" width="150" height="60" rx="8"/><text x="100" y="196" text-anchor="middle">Board shell</text><text x="100" y="214" text-anchor="middle">/board/[id], divider</text>
+  <rect class="h" x="250" y="150" width="190" height="100" rx="8"/><text x="345" y="176" text-anchor="middle">PDF Viewer (pdf.js)</text><text x="345" y="196" text-anchor="middle">text layer, highlights</text><text x="345" y="214" text-anchor="middle">selection popout</text><text x="345" y="232" text-anchor="middle">diagram select</text>
+  <rect class="h" x="500" y="150" width="190" height="100" rx="8"/><text x="595" y="176" text-anchor="middle">Notes Canvas</text><text x="595" y="196" text-anchor="middle">(Excalidraw)</text><text x="595" y="214" text-anchor="middle">handwritten notes</text><text x="595" y="232" text-anchor="middle">images, drawings</text>
+  <rect class="b" x="250" y="50" width="440" height="60" rx="8"/><text x="470" y="76" text-anchor="middle">Storage layer (lib/storage.ts, idb)</text><text x="470" y="94" text-anchor="middle">boards · pdfs · highlights · scenes</text>
+  <rect class="b" x="740" y="50" width="120" height="60" rx="8"/><text x="800" y="76" text-anchor="middle">IndexedDB</text><text x="800" y="94" text-anchor="middle">(browser)</text>
+  <rect class="b" x="740" y="170" width="120" height="60" rx="8"/><text x="800" y="196" text-anchor="middle">PDF export</text><text x="800" y="214" text-anchor="middle">jsPDF</text>
+  <path class="a" marker-end="url(#m)" d="M175 80H250"/><path class="a" marker-end="url(#m)" d="M690 80H740"/>
+  <path class="a" marker-end="url(#m)" d="M175 200H250"/><path class="a" marker-end="url(#m)" d="M440 200H500" stroke-dasharray="5 4"/><text x="470" y="190" text-anchor="middle">export / import</text>
+  <path class="a" marker-end="url(#m)" d="M690 200H740"/><path class="a" marker-end="url(#m)" d="M345 150V110"/><path class="a" marker-end="url(#m)" d="M595 150V110"/>
+</svg>
+
+<h2>Journey through the system</h2>
+<div class="steps" id="steps"></div><div class="card" id="box"></div>
+
+<h2>Components <span class="sub">(tap to open)</span></h2>
+<details><summary>Dashboard<span class="tag">prd: Dashboard cards, Create board and upload</span></summary>Card grid from IndexedDB; create dialog with PDF-only check; rename; delete with confirm.</details>
+<details><summary>Board Workspace Shell<span class="tag">prd: Split workspace</span></summary>react-resizable-panels: draggable divider, close/reopen each pane, saves ratio and visibility; owns autosave.</details>
+<details><summary>PDF Viewer<span class="tag">prd: Highlight to handwritten note</span></summary>pdf.js canvas + text layer, zoom, saved highlight overlays, banner for text-less (scanned) PDFs.</details>
+<details><summary>Selection Popout<span class="tag">prd: Highlight to handwritten note</span></summary>Color, font, Export to board. Selection stored as page-relative rectangles so it survives zoom and reload.</details>
+<details><summary>Diagram Select Tool<span class="tag">prd: Diagram import</span></summary>Dotted rectangle drag on a page; region re-rendered at high resolution to PNG; imported to notes.</details>
+<details><summary>Notes Canvas<span class="tag">prd: Notes tools</span></summary>Excalidraw with full toolbar, lined/blank paper, Download button, driven through its API.</details>
+<details><summary>Handwritten Note Element<span class="tag">prd: Highlight to handwritten note</span></summary>Preferred: native Excalidraw text with a custom font if supported. Fallback: image rendered in the font, text kept in <code>customData</code>, double-click to edit.</details>
+<details><summary>Next-Free-Spot Placement</summary>New items go below the lowest existing element, plus a gap, at the left margin.</details>
+<details><summary>Storage Layer and PDF Export<span class="tag">prd: Save, resume, download</span></summary>One wrapper module for IndexedDB; export scene to canvas, slice into pages, write PDF with jsPDF.</details>
+
+<h2>Data model (IndexedDB)</h2>
+<table>
+<tr><th>Store</th><th>Holds</th><th>On return</th></tr>
+<tr><td>boards</td><td>name, times, lastPage, dividerRatio, pane visibility, paper</td><td>read on dashboard and board open</td></tr>
+<tr><td>pdfs</td><td>the uploaded file (Blob)</td><td>reloaded into pdf.js</td></tr>
+<tr><td>highlights</td><td>page, rectangles, color, text, font</td><td>redrawn over the PDF</td></tr>
+<tr><td>scenes</td><td>Excalidraw elements, images, scroll/zoom</td><td>restored into the canvas</td></tr>
+</table>
+
+<h2>File structure</h2>
+<pre>app/  layout.tsx · page.tsx (-> /dashboard) · dashboard/page.tsx · board/[id]/page.tsx
+components/  dashboard/ · workspace/ · pdf/ · notes/
+lib/  storage.ts · types.ts · placement.ts · pdf-validate.ts · export-pdf.ts
+public/  sample PDF   devpost/   package.json   README.md</pre>
+
+<h2>Where it runs</h2>
+<ul><li><code>npm install</code>, <code>npm run dev</code>, open <code>localhost:3000</code>.</li>
+<li>Deploy: push to your GitHub repo, import in Vercel, accept Next.js defaults. No keys. Visitors start with no boards (storage is per browser).</li>
+<li>Still required for submission: demo video and public repo.</li></ul>
+
+<h2>Parallel agent work streams</h2>
+<div class="card">After a short serial foundation (scaffold, <code>types.ts</code>, <code>storage.ts</code>), four streams can run at once: <b>1</b> Dashboard · <b>2</b> PDF viewer + popout + diagram tool · <b>3</b> Notes canvas + handwritten note + placement + paper · <b>4</b> PDF export. Then wire them together serially.</div>
+
+<h2>Failure modes and open issues</h2>
+<ul>
+<li>Non-PDF upload: rejected before storing.</li>
+<li>Scanned PDF: banner; diagram tool still works.</li>
+<li>Storage full/unavailable: message; works in-session only.</li>
+<li><b>Open risk:</b> Excalidraw may not allow custom handwriting fonts. Check first; fallback is the image-based note.</li>
+<li>Library versions not verified; lined paper tracking pan/zoom to be tested.</li>
+</ul>
+</main>
+<script>
+var S=[["1 Dashboard","Reads boards from IndexedDB and shows cards."],
+["2 Create","PDF check (type + %PDF- header) → store Blob and board record → open /board/[id]."],
+["3 Open board","Load board, PDF, highlights, saved scene; size panes from saved divider ratio."],
+["4 Select text","Selection over the pdf.js text layer → popout (color, font, Export); highlight saved."],
+["5 Export","Compute next free spot → add handwritten note carrying the exact text → autosave."],
+["6 Diagram","Drag dotted rectangle → render region to PNG → image element at next free spot."],
+["7 Own notes","Excalidraw toolbar: pen, shapes, colors, text, eraser, undo/redo."],
+["8 Autosave","Debounced writes of scene, highlights, layout; lastOpenedAt on open."],
+["9 Download","Scene → canvas → sliced pages → jsPDF → file download."]];
+var bar=document.getElementById("steps"),box=document.getElementById("box");
+function show(i){[].forEach.call(bar.children,function(b,j){b.setAttribute("aria-pressed",j===i)});box.innerHTML="<b>"+S[i][0]+"</b><br>"+S[i][1]}
+S.forEach(function(s,i){var b=document.createElement("button");b.textContent=i+1;b.title=s[0];b.onclick=function(){show(i)};bar.appendChild(b)});show(0);
+</script>
+</body>
+</html>

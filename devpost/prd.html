@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDF Note taker — PRD</title>
+<style>
+  :root{--bg:#fafaf9;--fg:#1c1917;--muted:#78716c;--card:#fff;--line:#e7e5e4;--accent:#4f46e5;--accent-soft:#eef2ff;--ok:#16a34a;--warn:#d97706}
+  @media (prefers-color-scheme:dark){:root{--bg:#141413;--fg:#f5f5f4;--muted:#a8a29e;--card:#1c1b1a;--line:#2e2c2a;--accent:#818cf8;--accent-soft:#1e1d3a;--ok:#4ade80;--warn:#fbbf24}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,-apple-system,Segoe UI,sans-serif}
+  main{max-width:880px;margin:0 auto;padding:32px 16px 80px}
+  h1{font-size:28px;margin:0 0 4px} h2{font-size:20px;margin:40px 0 12px} h3{margin:0;font-size:16px}
+  .sub{color:var(--muted);margin:0 0 24px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin:12px 0}
+  .tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;background:var(--accent-soft);color:var(--accent);margin-right:6px}
+  .steps{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+  .steps button{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:8px;padding:6px 10px;cursor:pointer;font:inherit}
+  .steps button[aria-pressed=true]{background:var(--accent);color:#fff;border-color:var(--accent)}
+  #stepbox{min-height:64px}
+  details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:10px 0}
+  summary{cursor:pointer;font-weight:600}
+  ul{padding-left:20px;margin:8px 0} li{margin:4px 0}
+  .must{color:var(--warn)} svg{width:100%;height:auto}
+  svg text{fill:var(--fg);font:13px system-ui,sans-serif}
+  svg .box{fill:var(--card);stroke:var(--line);stroke-width:1.5}
+  svg .hot{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2}
+  svg .arrow{stroke:var(--muted);stroke-width:1.5;fill:none}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+</style>
+</head>
+<body>
+<main>
+<h1>PDF Note taker</h1>
+<p class="sub">Product Requirements (visual companion). Canonical source: <code>devpost/prd.md</code>. Draws on <code>scope.md</code>.</p>
+
+<div class="card">A web app where a student reads a PDF in one pane and builds <b>handwritten-style, editable notes</b> in the other. Highlights flow into the notes automatically. Landing page is built last and is not part of this first pass.</div>
+
+<h2>The core journey</h2>
+<svg viewBox="0 0 860 190" role="img" aria-label="Journey: Dashboard, create board and upload PDF, workspace, highlight to handwritten note, diagram import, save and reopen, download PDF">
+  <defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#78716c"/></marker></defs>
+  <rect class="box" x="5" y="15" width="130" height="60" rx="8"/><text x="70" y="40" text-anchor="middle">Dashboard</text><text x="70" y="58" text-anchor="middle">board cards</text>
+  <rect class="box" x="165" y="15" width="130" height="60" rx="8"/><text x="230" y="40" text-anchor="middle">Create board</text><text x="230" y="58" text-anchor="middle">upload PDF only</text>
+  <rect class="box" x="325" y="15" width="130" height="60" rx="8"/><text x="390" y="40" text-anchor="middle">Workspace</text><text x="390" y="58" text-anchor="middle">PDF | notes</text>
+  <rect class="hot" x="485" y="15" width="150" height="60" rx="8"/><text x="560" y="40" text-anchor="middle">Highlight →</text><text x="560" y="58" text-anchor="middle">handwritten note</text>
+  <rect class="hot" x="665" y="15" width="150" height="60" rx="8"/><text x="740" y="40" text-anchor="middle">Diagram select</text><text x="740" y="58" text-anchor="middle">dotted boundary → import</text>
+  <rect class="box" x="485" y="115" width="150" height="60" rx="8"/><text x="560" y="140" text-anchor="middle">Own notes</text><text x="560" y="158" text-anchor="middle">draw, write, undo</text>
+  <rect class="box" x="325" y="115" width="130" height="60" rx="8"/><text x="390" y="140" text-anchor="middle">Auto-saved</text><text x="390" y="158" text-anchor="middle">reopen as left</text>
+  <rect class="box" x="165" y="115" width="130" height="60" rx="8"/><text x="230" y="140" text-anchor="middle">Download</text><text x="230" y="158" text-anchor="middle">notes as PDF</text>
+  <path class="arrow" marker-end="url(#a)" d="M135 45H165"/><path class="arrow" marker-end="url(#a)" d="M295 45H325"/><path class="arrow" marker-end="url(#a)" d="M455 45H485"/><path class="arrow" marker-end="url(#a)" d="M635 45H665"/>
+  <path class="arrow" marker-end="url(#a)" d="M740 75V145H635"/><path class="arrow" marker-end="url(#a)" d="M485 145H455"/><path class="arrow" marker-end="url(#a)" d="M325 145H295"/>
+</svg>
+<p class="sub">Highlighted boxes are the heart: highlight-to-note (must-keep) and diagram import (in the demo).</p>
+
+<div class="steps" role="group" aria-label="Journey steps" id="steps"></div>
+<div class="card" id="stepbox"></div>
+
+<h2>Screens</h2>
+<div class="grid">
+  <div class="card"><h3>Dashboard</h3><ul><li>Card grid of boards</li><li>Name + last reopened</li><li>Create, rename, delete</li><li>Click opens saved state</li></ul></div>
+  <div class="card"><h3>Board workspace</h3><ul><li>PDF | draggable divider | notes</li><li>Close either pane</li><li>Notes toolbar, lined/blank paper</li></ul></div>
+</div>
+
+<h2>Behaviors and acceptance criteria</h2>
+<details open><summary><span class="tag">must-keep</span>Highlight to handwritten note</summary><ul>
+<li>Selecting text shows a popout: color, font, Export to board.</li>
+<li>Export adds the exact selected words, in the chosen handwritten font, at the next free spot.</li>
+<li>Color highlight stays on the PDF.</li>
+<li>Note item can be edited, moved, deleted.</li></ul></details>
+<details><summary><span class="tag">demo</span>Diagram import</summary><ul>
+<li>Diagram select tool draws a dotted boundary around a region.</li>
+<li>Confirming imports it as an image into the notes.</li>
+<li>Moves and resizes like handwritten text.</li></ul></details>
+<details><summary>Create board and upload</summary><ul>
+<li>Asks for a name and a PDF.</li><li>Non-PDF is rejected with a message; no board created.</li><li>Success lands in the workspace with the PDF shown.</li></ul></details>
+<details><summary>Dashboard cards</summary><ul>
+<li>Card shows name and last-reopened time.</li><li>Click restores the board exactly.</li><li>Rename works; delete asks for confirmation.</li></ul></details>
+<details><summary>Split workspace</summary><ul>
+<li>Divider drags left and right.</li><li>Close the PDF pane (notes only) or notes pane (PDF only), and bring it back.</li></ul></details>
+<details><summary>Notes tools</summary><ul>
+<li>Pen, colors, shapes and other Excalidraw-like tools; undo/redo; export.</li><li>Lined or blank paper, user's choice.</li><li>Everything selectable, movable, deletable.</li></ul></details>
+<details><summary>Save, resume, download</summary><ul>
+<li>Reopen restores PDF position, highlights, notes, divider.</li><li>Download produces a PDF showing handwriting, diagrams and drawings.</li></ul></details>
+
+<h2>States and boundaries</h2>
+<ul>
+<li><b>Empty Dashboard:</b> prompt to create the first board.</li>
+<li><b>Wrong file type:</b> rejected automatically with a message.</li>
+<li><b>Empty notes:</b> blank or lined paper with tools visible.</li>
+<li><b>Scanned PDF (assumption):</b> text highlight can't work, so the user sees a message; diagram select still works.</li>
+<li><b>Persistence:</b> boards, PDFs, highlights and notes survive between sessions. Per browser or per account is a spec decision.</li>
+</ul>
+
+<h2>Decisions you made</h2>
+<ul>
+<li>Name "PDF Note taker"; functional pages first, landing page last.</li>
+<li>Exact highlighted words, no AI rewriting.</li>
+<li>Default AI-app styling for the app chrome (no specific direction).</li>
+<li>Download as PDF; lined/blank paper left to the user; PDF-only upload; rename and delete boards.</li>
+<li>Everything in scope is "now"; time is not a constraint.</li>
+</ul>
+
+<h2>Deferred / non-goals</h2>
+<ul><li>Marketing landing page (built last).</li><li>Accounts, sharing, collaboration.</li><li>AI summarizing; non-PDF files.</li></ul>
+
+<h2>Open questions</h2>
+<ul>
+<li>Extra info on dashboard cards beyond name and last reopened (PDF title, page count, thumbnail)? <i>Can wait.</i></li>
+<li>Exact list of notes tools (defaults to an Excalidraw-like set). <i>Can wait.</i></li>
+<li>Confirm the scanned-PDF assumption above. <i>Confirm at review.</i></li>
+<li>Close controls for panes: separate buttons or a toggle? <i>Can wait.</i></li>
+</ul>
+</main>
+<script>
+var S=[
+["1. Dashboard","User lands on the Dashboard: board cards plus a Create board button."],
+["2. Create","Click Create board, name it, upload a PDF. Non-PDF files are rejected."],
+["3. Workspace","Redirected to the board: PDF and notes side by side with a draggable divider; either pane can be closed."],
+["4. Highlight","Select text; a popout offers color, font and Export to board."],
+["5. Note lands","The exact words appear in the notes in the chosen handwritten font at the next free spot; highlight stays on the PDF."],
+["6. Diagram","Diagram select tool with a dotted boundary imports a region as an image; move and resize like text."],
+["7. Own notes","Draw, write, undo/redo; edit, move or delete anything."],
+["8. Resume","Saved automatically. Click the card later and the board opens as left."],
+["9. Download","Download the notes as a PDF."]];
+var bar=document.getElementById("steps"),box=document.getElementById("stepbox");
+function show(i){[].forEach.call(bar.children,function(b,j){b.setAttribute("aria-pressed",j===i)});box.innerHTML="<b>"+S[i][0]+"</b><br>"+S[i][1]}
+S.forEach(function(s,i){var b=document.createElement("button");b.textContent=i+1;b.title=s[0];b.onclick=function(){show(i)};bar.appendChild(b)});
+show(0);
+</script>
+</body>
+</html>
