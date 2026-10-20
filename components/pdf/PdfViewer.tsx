@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import type { Highlight, HighlightRect } from "@/lib/types";
 import type { FontId } from "@/lib/handwriting-fonts";
+import { mostVisiblePage } from "@/lib/visible-page";
 import SelectionPopout from "./SelectionPopout";
 import "pdfjs-dist/web/pdf_viewer.css";
 
@@ -176,6 +177,8 @@ export default function PdfViewer({
   onZoomChange,
   onLoaded,
   onExport,
+  initialPage = 1,
+  onPageChange,
 }: {
   blob: Blob;
   highlights?: Highlight[];
@@ -183,6 +186,8 @@ export default function PdfViewer({
   onZoomChange?: (zoom: number | null) => void;
   onLoaded?: (pageCount: number) => void;
   onExport?: (sel: PendingSelection, color: string, font: FontId) => void;
+  initialPage?: number;
+  onPageChange?: (page: number) => void;
 }) {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -228,6 +233,70 @@ export default function PdfViewer({
       scrollRatio.current = null;
     }
   }, [scale]);
+
+  // Resume at the saved page once page heights are known (they settle asynchronously).
+  const restored = useRef(false);
+  const lastPage = useRef(initialPage);
+  const onPageChangeRef = useRef(onPageChange);
+  useEffect(() => {
+    onPageChangeRef.current = onPageChange;
+  });
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !pdf || !baseWidth || restored.current) return;
+    restored.current = true;
+    let interacted = false;
+    const stop = () => {
+      interacted = true;
+    };
+    el.addEventListener("wheel", stop, { passive: true });
+    el.addEventListener("touchstart", stop, { passive: true });
+    el.addEventListener("mousedown", stop);
+    const goto = () => {
+      if (interacted) return;
+      const target = el.querySelector<HTMLElement>(`[data-page="${initialPage}"]`);
+      if (target) {
+        el.scrollTop = target.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop - 16;
+      }
+    };
+    const timers = [0, 100, 250, 500, 900, 1500].map((ms) => setTimeout(goto, ms));
+    return () => {
+      timers.forEach(clearTimeout);
+      el.removeEventListener("wheel", stop);
+      el.removeEventListener("touchstart", stop);
+      el.removeEventListener("mousedown", stop);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pdf, baseWidth]);
+
+  // Report the most visible page, debounced.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !pdf) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const report = () => {
+      const box = el.getBoundingClientRect();
+      const rects = Array.from(el.querySelectorAll<HTMLElement>("[data-page]")).map((n) => {
+        const r = n.getBoundingClientRect();
+        return { page: Number(n.dataset.page), top: r.top, bottom: r.bottom };
+      });
+      const page = mostVisiblePage(rects, box.top, box.bottom);
+      if (page && page !== lastPage.current) {
+        lastPage.current = page;
+        onPageChangeRef.current?.(page);
+      }
+    };
+    const onScroll = () => {
+      if (!restored.current) return;
+      clearTimeout(timer);
+      timer = setTimeout(report, 300);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      clearTimeout(timer);
+      el.removeEventListener("scroll", onScroll);
+    };
+  }, [pdf]);
 
   function changeZoom(next: number | null) {
     const el = containerRef.current;

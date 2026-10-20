@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { listBoards } from "@/lib/storage";
+import { deleteBoard, listBoards, updateBoard } from "@/lib/storage";
 import type { Board } from "@/lib/types";
 import BoardCard from "@/components/dashboard/BoardCard";
 import CreateBoardDialog from "@/components/dashboard/CreateBoardDialog";
@@ -13,6 +13,16 @@ export default function DashboardPage() {
   useEffect(() => {
     listBoards().then(setBoards);
   }, []);
+
+  async function rename(id: string, name: string) {
+    await updateBoard(id, { name });
+    setBoards((bs) => bs && bs.map((b) => (b.id === id ? { ...b, name } : b)));
+  }
+
+  async function remove(id: string) {
+    await deleteBoard(id);
+    setBoards((bs) => bs && bs.filter((b) => b.id !== id));
+  }
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 p-6">
@@ -38,7 +48,7 @@ export default function DashboardPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {boards.map((b) => (
-            <BoardCard key={b.id} board={b} />
+            <BoardCard key={b.id} board={b} onRename={rename} onDelete={remove} />
           ))}
         </div>
       )}
