@@ -88,6 +88,12 @@ Execution plan: slices 1-3 run serially. After slice 3, slices 4, 5 and 6 run as
 
 ## Final Review
 
+Learner feedback from the first full try-out, implemented (verified by lint, build and placement logic; not yet re-tried in a browser):
+- [x] Exported text fills the page line by line (wraps at notebook-page width, one row per ruled line, next note starts on the next ruled line), on lined and blank pages
+- [x] Lined/Blank chosen when creating the board; toggle removed from the notes pane
+- [x] Download PDF moved to the top bar of the board page
+- [x] Handwriting font names always visible (buttons shown in their own fonts); color and font pickers moved to the PDF toolbar next to Clip diagram; selection popout enlarged
+
 - [ ] Final review complete — feedback resolved and learner confirms ready to ship
 
 ## Code Tour and App Map

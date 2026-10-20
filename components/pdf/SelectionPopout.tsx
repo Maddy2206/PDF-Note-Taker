@@ -1,71 +1,57 @@
 "use client";
 
-import { useState } from "react";
-import {
-  HANDWRITING_FONTS,
-  HIGHLIGHT_COLORS,
-  type FontId,
-} from "@/lib/handwriting-fonts";
-
 interface Props {
   x: number;
   y: number;
-  onExport: (color: string, font: FontId) => void;
+  /** Current note color and handwriting font, chosen in the toolbar above the PDF. */
+  color: string;
+  fontLabel: string;
+  fontFamily: string;
+  onExport: () => void;
   onDismiss: () => void;
 }
 
-/** Appears next to selected PDF text: pick a color and handwriting font, then export. */
-const HALF_WIDTH = 200; // about half the popout's width
+const HALF_WIDTH = 190; // about half the popout's width
 
-export default function SelectionPopout({ x, y, onExport, onDismiss }: Props) {
-  const [color, setColor] = useState(HIGHLIGHT_COLORS[0].value);
-  const [font, setFont] = useState<FontId>("caveat");
-
+/** Appears next to selected PDF text; one click sends it to the notes. */
+export default function SelectionPopout({
+  x,
+  y,
+  color,
+  fontLabel,
+  fontFamily,
+  onExport,
+  onDismiss,
+}: Props) {
   return (
     <div
       // keep the text selection alive while using the popout
-      onMouseDown={(e) => {
-        if (!(e.target instanceof HTMLSelectElement)) e.preventDefault();
-      }}
+      onMouseDown={(e) => e.preventDefault()}
       style={{
         left: Math.min(Math.max(x, HALF_WIDTH), window.innerWidth - HALF_WIDTH),
-        top: Math.min(y, window.innerHeight - 56),
+        top: Math.min(y, window.innerHeight - 90),
       }}
-      className="fixed z-40 flex -translate-x-1/2 items-center gap-2 rounded-lg border border-zinc-200 bg-white p-2 text-sm shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+      className="fixed z-40 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-zinc-200 bg-white p-3 text-base shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
       role="dialog"
       aria-label="Highlight options"
     >
-      <div className="flex gap-1">
-        {HIGHLIGHT_COLORS.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            title={c.label}
-            aria-label={c.label}
-            aria-pressed={color === c.value}
-            onClick={() => setColor(c.value)}
-            style={{ background: c.value }}
-            className="h-6 w-6 rounded-full border border-black/10 aria-pressed:ring-2 aria-pressed:ring-indigo-500"
-          />
-        ))}
-      </div>
-      <select
-        value={font}
-        onChange={(e) => setFont(e.target.value as FontId)}
-        aria-label="Handwriting font"
-        className="rounded-md border border-zinc-300 bg-transparent px-1 py-1 dark:border-zinc-700"
-        style={{ fontFamily: HANDWRITING_FONTS.find((f) => f.id === font)?.family }}
+      <div
+        className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100"
+        title="Change the color and font in the toolbar above the PDF"
       >
-        {HANDWRITING_FONTS.map((f) => (
-          <option key={f.id} value={f.id} style={{ fontFamily: f.family }}>
-            {f.label}
-          </option>
-        ))}
-      </select>
+        <span
+          className="h-6 w-6 shrink-0 rounded-full border border-black/10"
+          style={{ background: color }}
+          aria-hidden
+        />
+        <span className="text-xl leading-none" style={{ fontFamily }}>
+          {fontLabel}
+        </span>
+      </div>
       <button
         type="button"
-        onClick={() => onExport(color, font)}
-        className="rounded-md bg-indigo-600 px-2.5 py-1 font-medium text-white hover:bg-indigo-700"
+        onClick={onExport}
+        className="rounded-lg bg-indigo-600 px-5 py-2.5 text-base font-semibold text-white hover:bg-indigo-700"
       >
         Export to board
       </button>
@@ -73,7 +59,7 @@ export default function SelectionPopout({ x, y, onExport, onDismiss }: Props) {
         type="button"
         onClick={onDismiss}
         aria-label="Dismiss"
-        className="px-1 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+        className="px-1.5 text-2xl leading-none text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
       >
         &times;
       </button>

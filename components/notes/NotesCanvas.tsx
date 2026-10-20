@@ -11,7 +11,6 @@ import type {
 import type { OrderedExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import { loadScene, saveScene } from "@/lib/storage";
 import PaperBackground, { type PaperView } from "./PaperBackground";
-import { exportNotesPdf } from "@/lib/export-pdf";
 import EditNoteDialog from "./EditNoteDialog";
 import { getNoteMeta, updateHandwrittenNote, type NoteMeta } from "./handwritten";
 import type { Paper, SceneRecord } from "@/lib/types";
@@ -22,50 +21,14 @@ export default function NotesCanvas({
   boardId,
   onApi,
   paper,
-  onPaperChange,
-  boardName,
 }: {
   boardId: string;
   onApi?: (api: ExcalidrawImperativeAPI) => void;
   paper: Paper;
-  onPaperChange: (p: Paper) => void;
-  boardName: string;
 }) {
   const [view, setView] = useState<PaperView>({ scrollX: 0, scrollY: 0, zoom: 1 });
   const viewRaf = useRef<number | null>(null);
   const pendingView = useRef<PaperView | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
-  const [exporting, setExporting] = useState(false);
-
-  useEffect(
-    () => () => {
-      if (viewRaf.current) cancelAnimationFrame(viewRaf.current);
-    },
-    [],
-  );
-
-  async function downloadPdf() {
-    const api = apiRef.current;
-    if (!api || exporting) return;
-    setExporting(true);
-    try {
-      const ok = await exportNotesPdf({
-        elements: api.getSceneElements(),
-        files: api.getFiles(),
-        paper,
-        fileName: boardName,
-      });
-      if (!ok) {
-        setToast("Nothing to download yet");
-        setTimeout(() => setToast(null), 2500);
-      }
-    } catch {
-      setToast("Could not create the PDF");
-      setTimeout(() => setToast(null), 2500);
-    } finally {
-      setExporting(false);
-    }
-  }
   const [initial, setInitial] = useState<SceneRecord | null | undefined>(undefined);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
@@ -159,32 +122,6 @@ export default function NotesCanvas({
         }}
         onChange={handleChange}
       />
-      <div className="absolute bottom-16 right-3 z-10 flex flex-col items-end gap-2">
-        <div className="flex overflow-hidden rounded-md border border-zinc-300 bg-white text-sm font-medium shadow">
-          {(["lined", "blank"] as const).map((p) => (
-            <button
-              key={p}
-              onClick={() => onPaperChange(p)}
-              aria-pressed={paper === p}
-              className={`px-3 py-1.5 ${paper === p ? "bg-indigo-600 text-white" : "text-zinc-700 hover:bg-zinc-100"}`}
-            >
-              {p === "lined" ? "Lined" : "Blank"}
-            </button>
-          ))}
-        </div>
-        <button
-          onClick={downloadPdf}
-          disabled={exporting}
-          className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow disabled:opacity-60"
-        >
-          {exporting ? "Preparing..." : "Download PDF"}
-        </button>
-        {toast && (
-          <p role="status" className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm text-white shadow">
-            {toast}
-          </p>
-        )}
-      </div>
       {saveError && (
         <p
           role="alert"

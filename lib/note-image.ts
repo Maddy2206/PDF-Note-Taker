@@ -1,8 +1,9 @@
 import { getFont } from "./handwriting-fonts";
+import { LINE } from "./placement";
 
 const FONT_SIZE = 30;
-const LINE_HEIGHT = 1.35;
-const MAX_WIDTH = 420;
+/** Text wraps at the width of a notebook page, one handwritten row per ruled line. */
+const MAX_WIDTH = 690;
 const PAD = 8;
 const PIXEL_RATIO = 2;
 
@@ -50,10 +51,10 @@ export async function renderNoteImage(
   const probe = document.createElement("canvas").getContext("2d")!;
   probe.font = fontSpec;
   const lines = wrap(probe, text);
-  const lineH = FONT_SIZE * LINE_HEIGHT;
+  const lineH = LINE;
   const textW = Math.max(...lines.map((l) => probe.measureText(l).width), 10);
   const width = Math.ceil(textW + PAD * 2);
-  const height = Math.ceil(lines.length * lineH + PAD * 2);
+  const height = lines.length * lineH;
 
   const canvas = document.createElement("canvas");
   canvas.width = width * PIXEL_RATIO;
@@ -64,9 +65,9 @@ export async function renderNoteImage(
   ctx.textBaseline = "alphabetic";
 
   lines.forEach((line, i) => {
-    const y = PAD + i * lineH;
+    const y = i * lineH;
     ctx.fillStyle = color;
-    ctx.fillText(line, PAD, y + lineH * 0.72);
+    ctx.fillText(line, PAD, y + lineH * 0.74);
   });
 
   return { dataURL: canvas.toDataURL("image/png"), width, height };

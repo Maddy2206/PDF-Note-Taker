@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBoard } from "@/lib/storage";
 import { validatePdf } from "@/lib/pdf-validate";
+import type { Paper } from "@/lib/types";
 
 export default function CreateBoardDialog({ onClose }: { onClose: () => void }) {
   const router = useRouter();
@@ -12,6 +13,7 @@ export default function CreateBoardDialog({ onClose }: { onClose: () => void }) 
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [paper, setPaper] = useState<Paper>("lined");
 
   async function pickFile(f: File | null) {
     setError(null);
@@ -32,7 +34,7 @@ export default function CreateBoardDialog({ onClose }: { onClose: () => void }) 
     if (!file || !name.trim()) return;
     setBusy(true);
     try {
-      const board = await createBoard(name.trim(), file);
+      const board = await createBoard(name.trim(), file, paper);
       router.push(`/board/${board.id}`);
     } catch {
       setError("Couldn't save the board. Browser storage may be full or blocked.");
@@ -70,6 +72,22 @@ export default function CreateBoardDialog({ onClose }: { onClose: () => void }) 
             className="w-full text-sm"
           />
         </label>
+        <fieldset className="text-sm">
+          <legend className="mb-1 text-zinc-600 dark:text-zinc-400">Notes page type</legend>
+          <div className="flex gap-2">
+            {(["lined", "blank"] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPaper(p)}
+                aria-pressed={paper === p}
+                className="flex-1 rounded-md border border-zinc-300 px-3 py-2 font-medium aria-pressed:border-indigo-600 aria-pressed:bg-indigo-600 aria-pressed:text-white dark:border-zinc-700"
+              >
+                {p === "lined" ? "Lined notebook" : "Blank page"}
+              </button>
+            ))}
+          </div>
+        </fieldset>
         {error && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
             {error}

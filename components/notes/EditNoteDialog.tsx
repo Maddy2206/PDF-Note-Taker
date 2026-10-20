@@ -41,10 +41,10 @@ export default function EditNoteDialog({
             value={font}
             onChange={(e) => setFont(e.target.value)}
             aria-label="Handwriting font"
-            className="rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm dark:border-zinc-700"
+            className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
           >
             {HANDWRITING_FONTS.map((f) => (
-              <option key={f.id} value={f.id}>
+              <option key={f.id} value={f.id} className="bg-white text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
                 {f.label}
               </option>
             ))}

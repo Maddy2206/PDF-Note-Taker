@@ -40,7 +40,11 @@ export async function getBoard(id: string): Promise<Board | undefined> {
   return (await db()).get("boards", id);
 }
 
-export async function createBoard(name: string, file: File): Promise<Board> {
+export async function createBoard(
+  name: string,
+  file: File,
+  paper: Board["paper"] = "lined",
+): Promise<Board> {
   const now = Date.now();
   const board: Board = {
     id: crypto.randomUUID(),
@@ -51,7 +55,7 @@ export async function createBoard(name: string, file: File): Promise<Board> {
     lastPage: 1,
     dividerRatio: 0.5,
     paneVisibility: { pdf: true, notes: true },
-    paper: "lined",
+    paper,
   };
   const d = await db();
   const tx = d.transaction(["boards", "pdfs"], "readwrite");

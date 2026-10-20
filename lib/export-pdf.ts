@@ -40,6 +40,9 @@ export async function exportNotesPdf(opts: {
 
   const pagePx = pageHeightInPixels(src.width, contentW, contentH);
   const slices = sliceHeights(src.height, pagePx);
+  // Scene y = 40k is a ruled line on screen; find those rows in the exported canvas.
+  const minY = Math.min(...elements.map((e) => e.y));
+  const lineOffset = (((PADDING - minY) % LINE_SPACING) + LINE_SPACING) % LINE_SPACING;
   const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
   const mmPerPx = contentW / src.width;
 
@@ -54,7 +57,7 @@ export async function exportNotesPdf(opts: {
     if (opts.paper === "lined") {
       ctx.strokeStyle = "rgba(96, 140, 200, 0.45)";
       ctx.lineWidth = 2;
-      const first = Math.ceil(s.sy / LINE_SPACING) * LINE_SPACING;
+      const first = lineOffset + Math.ceil((s.sy - lineOffset) / LINE_SPACING) * LINE_SPACING;
       for (let y = first; y < s.sy + pagePx; y += LINE_SPACING) {
         ctx.beginPath();
         ctx.moveTo(0, y - s.sy);

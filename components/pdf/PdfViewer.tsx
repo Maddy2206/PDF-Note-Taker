@@ -3,7 +3,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import type { Highlight, HighlightRect } from "@/lib/types";
-import type { FontId } from "@/lib/handwriting-fonts";
+import {
+  HANDWRITING_FONTS,
+  HIGHLIGHT_COLORS,
+  getFont,
+  type FontId,
+} from "@/lib/handwriting-fonts";
 import { mostVisiblePage } from "@/lib/visible-page";
 import SelectionPopout from "./SelectionPopout";
 import DiagramSelect, { type DiagramImage } from "./DiagramSelect";
@@ -209,6 +214,30 @@ export default function PdfViewer({
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [noText, setNoText] = useState(false);
+  // Remember the last color and font (a per-browser convenience, never required).
+  // This component only mounts after the board has loaded in the browser.
+  const [ink, setInk] = useState(() => {
+    try {
+      const c = localStorage.getItem("pdfnote.ink");
+      if (c && HIGHLIGHT_COLORS.some((x) => x.value === c)) return c;
+    } catch {}
+    return HIGHLIGHT_COLORS[0].value;
+  });
+  const [fontId, setFontId] = useState<FontId>(() => {
+    try {
+      const f = localStorage.getItem("pdfnote.font");
+      if (f && HANDWRITING_FONTS.some((x) => x.id === f)) return f as FontId;
+    } catch {}
+    return "caveat";
+  });
+  function pickInk(c: string) {
+    setInk(c);
+    try { localStorage.setItem("pdfnote.ink", c); } catch {}
+  }
+  function pickFont(f: FontId) {
+    setFontId(f);
+    try { localStorage.setItem("pdfnote.font", f); } catch {}
+  }
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState<number | null>(initialZoom);
   const [fitScale, setFitScale] = useState(1);
@@ -371,7 +400,7 @@ export default function PdfViewer({
 
   return (
     <div className="flex h-full flex-col">
-    <div className="flex shrink-0 items-center gap-1 border-b border-zinc-200 bg-white px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+    <div className="flex shrink-0 flex-wrap items-center gap-x-1 gap-y-1.5 border-b border-zinc-200 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900">
       <button
         onClick={() => changeZoom(scale - ZOOM_STEP)}
         aria-label="Zoom out"
@@ -414,6 +443,35 @@ export default function PdfViewer({
           )}
         </>
       )}
+      <span className="mx-2 h-6 w-px bg-zinc-300 dark:bg-zinc-600" aria-hidden />
+      <div className="flex items-center gap-1.5" role="group" aria-label="Note color">
+        {HIGHLIGHT_COLORS.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            title={c.label}
+            aria-label={c.label}
+            aria-pressed={ink === c.value}
+            onClick={() => pickInk(c.value)}
+            style={{ background: c.value }}
+            className="h-6 w-6 rounded-full border border-black/10 aria-pressed:ring-2 aria-pressed:ring-indigo-500 aria-pressed:ring-offset-1"
+          />
+        ))}
+      </div>
+      <div className="ml-2 flex flex-wrap items-center gap-1" role="group" aria-label="Handwriting font">
+        {HANDWRITING_FONTS.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            onClick={() => pickFont(f.id)}
+            aria-pressed={fontId === f.id}
+            style={{ fontFamily: f.family }}
+            className="rounded border border-zinc-300 px-2 py-0.5 text-base leading-tight text-zinc-900 hover:bg-zinc-100 aria-pressed:border-indigo-600 aria-pressed:bg-indigo-600 aria-pressed:text-white dark:border-zinc-600 dark:text-zinc-100 dark:hover:bg-zinc-800"
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
     </div>
     {noText && (
       <p role="status" className="shrink-0 bg-amber-100 px-3 py-1.5 text-sm text-amber-900">
@@ -441,9 +499,12 @@ export default function PdfViewer({
         <SelectionPopout
           x={pending.x}
           y={pending.y}
+          color={ink}
+          fontLabel={getFont(fontId).label}
+          fontFamily={getFont(fontId).family}
           onDismiss={dismiss}
-          onExport={(color, font) => {
-            onExport?.(pending.sel, color, font);
+          onExport={() => {
+            onExport?.(pending.sel, ink, fontId);
             dismiss();
           }}
         />

@@ -31,6 +31,7 @@ export default function BoardPage() {
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
   const handleApi = useCallback((a: ExcalidrawImperativeAPI) => setApi(a), []);
 
   useEffect(() => {
@@ -129,6 +130,26 @@ export default function BoardPage() {
     if (!board?.paneVisibility.notes) save({ paneVisibility: { pdf: true, notes: true } });
   }
 
+  async function downloadPdf() {
+    if (!api || !board || downloading) return;
+    setDownloading(true);
+    try {
+      const { exportNotesPdf } = await import("@/lib/export-pdf");
+      const ok = await exportNotesPdf({
+        elements: api.getSceneElements(),
+        files: api.getFiles(),
+        paper: board.paper,
+        fileName: board.name,
+      });
+      if (!ok) setNotice("Nothing to download yet. Add some notes first.");
+    } catch (e) {
+      console.error("exportNotesPdf failed", e);
+      setNotice("Couldn't create the PDF. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   function toggle(key: keyof PaneVisibility) {
     if (!board) return;
     const next = { ...board.paneVisibility, [key]: !board.paneVisibility[key] };
@@ -167,7 +188,14 @@ export default function BoardPage() {
           &larr; Boards
         </Link>
         <h1 className="truncate font-medium">{board.name}</h1>
-        <div className="ml-auto flex gap-2 text-sm">
+        <div className="ml-auto flex items-center gap-2 text-sm">
+          <button
+            onClick={downloadPdf}
+            disabled={!api || downloading}
+            className="rounded-md bg-indigo-600 px-3 py-1 font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+          >
+            {downloading ? "Preparing..." : "Download PDF"}
+          </button>
           {(["pdf", "notes"] as const).map((key) => (
             <button
               key={key}
@@ -207,7 +235,7 @@ export default function BoardPage() {
               onLoaded={(pageCount) => updateBoard(id, { pageCount })}
             />
           }
-          notes={<NotesCanvas boardId={id} onApi={handleApi} paper={board.paper} onPaperChange={(paper) => save({ paper })} boardName={board.name} />}
+          notes={<NotesCanvas boardId={id} onApi={handleApi} paper={board.paper} />}
         />
       </div>
     </div>
