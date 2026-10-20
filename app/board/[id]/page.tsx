@@ -168,7 +168,7 @@ export default function BoardPage() {
               onLoaded={(pageCount) => updateBoard(id, { pageCount })}
             />
           }
-          notes={<NotesCanvas boardId={id} onApi={handleApi} />}
+          notes={<NotesCanvas boardId={id} onApi={handleApi} paper={board.paper} onPaperChange={(paper) => save({ paper })} boardName={board.name} />}
         />
       </div>
     </div>
