@@ -9,9 +9,15 @@ import CreateBoardDialog from "@/components/dashboard/CreateBoardDialog";
 export default function DashboardPage() {
   const [boards, setBoards] = useState<Board[] | null>(null);
   const [creating, setCreating] = useState(false);
+  const [storageError, setStorageError] = useState(false);
 
   useEffect(() => {
-    listBoards().then(setBoards);
+    listBoards()
+      .then(setBoards)
+      .catch(() => {
+        setStorageError(true);
+        setBoards([]);
+      });
   }, []);
 
   async function rename(id: string, name: string) {
@@ -36,6 +42,12 @@ export default function DashboardPage() {
         </button>
       </header>
 
+      {storageError && (
+        <p role="alert" className="mb-4 rounded-md bg-red-100 px-3 py-2 text-sm text-red-900">
+          Couldn&apos;t open browser storage, so your boards can&apos;t be loaded or saved. Check that
+          storage isn&apos;t blocked (for example in a private window) and reload.
+        </p>
+      )}
       {boards === null ? (
         <p className="text-zinc-500">Loading...</p>
       ) : boards.length === 0 ? (

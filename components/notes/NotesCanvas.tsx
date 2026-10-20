@@ -71,6 +71,7 @@ export default function NotesCanvas({
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
   const [selectedNote, setSelectedNote] = useState<{ id: string; meta: NoteMeta } | null>(null);
   const [editing, setEditing] = useState(false);
+  const [saveError, setSaveError] = useState(false);
 
   useEffect(() => {
     loadScene(boardId).then((s) => setInitial(s ?? null));
@@ -132,7 +133,9 @@ export default function NotesCanvas({
           scrollY: appState.scrollY,
           zoom: appState.zoom,
         },
-      });
+      })
+        .then(() => setSaveError(false))
+        .catch(() => setSaveError(true));
     }, SAVE_DELAY_MS);
   }
 
@@ -182,6 +185,14 @@ export default function NotesCanvas({
           </p>
         )}
       </div>
+      {saveError && (
+        <p
+          role="alert"
+          className="absolute bottom-16 left-1/2 z-10 -translate-x-1/2 rounded-md bg-red-100 px-3 py-1.5 text-sm text-red-900 shadow"
+        >
+          Couldn&apos;t save your notes. Browser storage may be full or blocked.
+        </p>
+      )}
       {selectedNote && (
         <button
           onClick={() => setEditing(true)}

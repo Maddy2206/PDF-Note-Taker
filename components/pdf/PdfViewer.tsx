@@ -208,6 +208,7 @@ export default function PdfViewer({
 
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [noText, setNoText] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState<number | null>(initialZoom);
   const [fitScale, setFitScale] = useState(1);
@@ -347,6 +348,13 @@ export default function PdfViewer({
         if (cancelled) return;
         setPdf(doc);
         onLoaded?.(doc.numPages);
+        // A scanned PDF has no text layer, so text highlighting can't work.
+        let hasText = false;
+        for (let i = 1; i <= Math.min(doc.numPages, 5) && !hasText; i++) {
+          const content = await (await doc.getPage(i)).getTextContent();
+          hasText = content.items.some((it) => "str" in it && it.str.trim() !== "");
+        }
+        if (!cancelled) setNoText(!hasText);
       } catch {
         if (!cancelled) setError("Couldn't open this PDF.");
       }
@@ -407,6 +415,12 @@ export default function PdfViewer({
         </>
       )}
     </div>
+    {noText && (
+      <p role="status" className="shrink-0 bg-amber-100 px-3 py-1.5 text-sm text-amber-900">
+        This PDF has no selectable text (it may be a scan), so text highlighting won&apos;t
+        work. You can still clip diagrams into your notes.
+      </p>
+    )}
     <div
       ref={containerRef}
       onMouseUp={handleSelect}

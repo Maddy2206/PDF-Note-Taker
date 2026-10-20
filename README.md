@@ -1,36 +1,36 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PDF Note taker
 
-## Getting Started
+Read a PDF on one side and build handwritten-style, editable notes on the other. Highlight text in the PDF and it appears in your notes in a handwriting font and the color you picked. Clip diagrams from the PDF into the notes, draw or write your own, and download the notes as a PDF.
 
-First, run the development server:
+Everything is saved in your browser (IndexedDB). There is no server, login or API key.
+
+## Run it
+
+Requires Node.js 20+.
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open <http://localhost:3000>. A sample PDF is at `public/sample.pdf` (also served at `/sample.pdf`) if you want something to try.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Try it (the demo flow)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. On the dashboard, click **Create board**, name it and upload a PDF. Non-PDF files are rejected.
+2. Drag the divider between the PDF and the notes. Use the **PDF** and **Notes** buttons at the top to close or reopen a pane. Zoom the PDF with the **-** / **+** / **Fit width** controls.
+3. Select text in the PDF, pick a color and handwriting font, and click **Export to board**. Click a handwritten note to move, resize, delete or **Edit handwritten note**.
+4. Click **Clip diagram**, drag a dotted box around a figure, then **Import to notes**.
+5. Draw and write with the Excalidraw tools. **Ctrl+Z** undoes, **Ctrl+Shift+Z** redoes. Switch the paper between **Lined** and **Blank**.
+6. Reload: the notes, highlights, layout and reading position come back. **Download PDF** saves your notes.
+7. On the dashboard, rename or delete a board from its card.
 
-## Learn More
+Boards live in the browser you created them in, so a deployed copy starts empty for each visitor.
 
-To learn more about Next.js, take a look at the following resources:
+## Deploy
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Push to GitHub and import the repo in Vercel; the Next.js defaults work with no environment variables.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Built with
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Next.js, TypeScript, Tailwind CSS, [pdf.js](https://mozilla.github.io/pdf.js/), [Excalidraw](https://docs.excalidraw.com/), [idb](https://github.com/jakearchibald/idb), [react-resizable-panels](https://github.com/bvaughn/react-resizable-panels) and [jsPDF](https://github.com/parallax/jsPDF).

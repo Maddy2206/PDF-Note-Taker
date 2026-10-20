@@ -41,7 +41,7 @@ Execution plan: slices 1-3 run serially. After slice 3, slices 4, 5 and 6 run as
   Learner check: Highlight three sentences with different colors and fonts, export each, move and edit one, reload.
   Commit: `Add highlight-to-handwritten-note export`
 
-- [ ] **4. Clip a diagram from the PDF into the notes**
+- [x] **4. Clip a diagram from the PDF into the notes**
   Becomes usable: A diagram tool on the PDF pane; drag a dotted rectangle, import, and the clipped image appears in the notes at the next free spot and moves and resizes like text.
   Why now: Second thing in the demo; independent of the paper and dashboard work.
   PRD ref: `prd.md > Diagram import`
@@ -51,7 +51,7 @@ Execution plan: slices 1-3 run serially. After slice 3, slices 4, 5 and 6 run as
   Learner check: Clip a diagram from your PDF, resize and move it in the notes, reload.
   Commit: `Add diagram select and import`
 
-- [ ] **5. Paper styles and download notes as PDF**
+- [x] **5. Paper styles and download notes as PDF**
   Becomes usable: Choose lined or blank paper; a Download button saves the notes as a PDF showing handwriting, diagrams and drawings.
   Why now: Completes the notes side; independent of dashboard polish.
   PRD ref: `prd.md > Notes tools`, `prd.md > Save, resume, download`
@@ -61,7 +61,7 @@ Execution plan: slices 1-3 run serially. After slice 3, slices 4, 5 and 6 run as
   Learner check: Switch paper style, download the notes and open the PDF to check it reads well.
   Commit: `Add paper styles and PDF download`
 
-- [ ] **6. Manage boards and resume exactly where you left**
+- [x] **6. Manage boards and resume exactly where you left**
   Becomes usable: Rename and delete boards (with confirmation); cards show last reopened; reopening restores PDF page position, highlights, notes, and layout.
   Why now: Final round of the dashboard and persistence behavior once everything else exists to restore.
   PRD ref: `prd.md > Dashboard cards`, `prd.md > Save, resume, download`, `prd.md > States and Boundaries`
@@ -71,7 +71,7 @@ Execution plan: slices 1-3 run serially. After slice 3, slices 4, 5 and 6 run as
   Learner check: Rename and delete a board, then read to page 10 in another, close it, reopen and confirm it resumes.
   Commit: `Add board rename, delete and resume`
 
-- [ ] **7. Failure states and a clean demo run**
+- [x] **7. Failure states and a clean demo run**
   Becomes usable: Scanned (no-text) PDFs show a message while the diagram tool still works; storage errors show a clear message; the README says how to run it; a sample PDF is included for the demo.
   Why now: Last, so it hardens the finished behavior instead of guessing at it.
   PRD ref: `prd.md > States and Boundaries`
@@ -83,7 +83,7 @@ Execution plan: slices 1-3 run serially. After slice 3, slices 4, 5 and 6 run as
 
 ## Hands-on Checkpoints
 
-- [ ] Early usable behavior explored — after slice 3 (the kernel), where feedback can still shape slices 4-7
+- [x] Early usable behavior explored — after slice 3 (the kernel), where feedback can still shape slices 4-7
 - [ ] Final kick-the-tires exploration and feedback completed
 
 ## Final Review
@@ -108,3 +108,5 @@ Activity mode: [live app and editor, explicit static fallback, focused alternati
 - Excalidraw's text tool only offers its built-in font families (Virgil, Excalifont, Comic Shanns, etc.) and has no custom font registration, so handwritten notes use the spec's fallback: an image rendered in the chosen Google handwriting font (Caveat, Kalam, Patrick Hand, Indie Flower) with the exact text, font and color kept in the element's `customData`. A "Edit handwritten note" button appears when one is selected, instead of double-click, because Excalidraw has no double-click hook.
 - next/font's generated "Fallback" font face can fail to load on machines without that system font and rejected `document.fonts.load`, so note rendering now loads only the primary family and treats a failed load as non-fatal.
 - Learner feedback after slice 3 (early checkpoint): added PDF zoom (zoom in/out and Fit width, saved per board as `pdfZoom`); notes are now written in the chosen color (palette changed to ink colors: blue, red, green, purple, orange) instead of black text on a colored band; note changes are recorded in Excalidraw's history and Ctrl+Z / Ctrl+Y work even when focus is on the PDF side. Also fixed highlights picking up whole page containers on triple-click selection. The diagram button and lined paper the learner asked for are slices 4 and 5, not yet built.
+- Slices 4, 5 and 6 were built by three parallel agents in separate git worktrees. The first launch was lost when the session ended (nothing had been committed), so all three were relaunched from the same commit. They were merged one at a time; slice 6 conflicted with slice 4 in `PdfViewer.tsx` and the board page only by both adding props, resolved by keeping both. The agents could not use the shared browser, so each verified with lint, type-check and logic scripts only.
+- The browser testing tool disconnected after slice 3. Slices 4-7 have been verified with lint, `npm run build` and logic scripts (page slicing) but NOT yet clicked through in a real browser; the final kick-the-tires review is where that happens.

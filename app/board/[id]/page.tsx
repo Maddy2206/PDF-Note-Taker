@@ -27,6 +27,7 @@ export default function BoardPage() {
   const [board, setBoard] = useState<Board | null>(null);
   const [pdf, setPdf] = useState<Blob | null>(null);
   const [missing, setMissing] = useState(false);
+  const [storageError, setStorageError] = useState(false);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -34,6 +35,13 @@ export default function BoardPage() {
 
   useEffect(() => {
     (async () => {
+      try {
+        await loadBoard();
+      } catch {
+        setStorageError(true);
+      }
+    })();
+    async function loadBoard() {
       const b = await getBoard(id);
       const blob = await getPdf(id);
       if (!b || !blob) {
@@ -43,7 +51,7 @@ export default function BoardPage() {
       setBoard((await updateBoard(id, { lastOpenedAt: Date.now() })) ?? b);
       setPdf(blob);
       setHighlights(await listHighlights(id));
-    })();
+    }
   }, [id]);
 
   // Ctrl+Z / Ctrl+Y undo and redo the notes even when focus is on the PDF side.
@@ -128,6 +136,18 @@ export default function BoardPage() {
     save({ paneVisibility: next });
   }
 
+  if (storageError) {
+    return (
+      <main className="p-6">
+        <p role="alert" className="mb-2">
+          Couldn&apos;t open browser storage, so this board can&apos;t be loaded.
+        </p>
+        <Link href="/dashboard" className="text-indigo-600 underline">
+          Back to your boards
+        </Link>
+      </main>
+    );
+  }
   if (missing) {
     return (
       <main className="p-6">
