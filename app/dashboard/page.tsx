@@ -32,7 +32,7 @@ export default function DashboardPage() {
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 p-6">
-      <header className="mb-6 flex items-center justify-between">
+      <header className="mb-6 flex border-b-2 border-zinc-900/40 pb-4 items-center justify-between">
         <h1 className="text-2xl font-semibold">Your boards</h1>
         <button
           onClick={() => setCreating(true)}

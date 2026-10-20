@@ -1,26 +1,68 @@
 @import "tailwindcss";
 
+/* Modernist design system, from the "Margin" design project. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f3f2f2;
+  --foreground: #201e1d;
+  --color-surface: #eae9e9;
+  --color-divider: color-mix(in srgb, #201e1d 40%, transparent);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-archivo), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Square corners everywhere. */
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+
+  /* Warm neutrals replace zinc. */
+  --color-zinc-50: #f8f4f4;
+  --color-zinc-100: #eae9e9;
+  --color-zinc-200: #d7d3d3;
+  --color-zinc-300: #bab6b6;
+  --color-zinc-400: #9b9797;
+  --color-zinc-500: #7d7979;
+  --color-zinc-600: #605d5d;
+  --color-zinc-700: #444141;
+  --color-zinc-800: #2d2b2b;
+  --color-zinc-900: #201e1d;
+
+  /* The red accent replaces indigo. */
+  --color-indigo-50: #fff2ef;
+  --color-indigo-100: #ffe0d9;
+  --color-indigo-200: #ffc4b8;
+  --color-indigo-300: #ff9783;
+  --color-indigo-400: #ff563c;
+  --color-indigo-500: #ec3013;
+  --color-indigo-600: #ec3013;
+  --color-indigo-700: #dd2b0f;
+  --color-indigo-800: #ae1800;
+  --color-indigo-900: #7c1405;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+h1, h2, h3, h4 {
+  font-weight: 800;
+  letter-spacing: -0.015em;
+}
+
+:focus-visible {
+  outline: 2px solid #ec3013;
+  outline-offset: 2px;
+}
+
+::selection {
+  background: color-mix(in srgb, #ec3013 30%, transparent);
 }

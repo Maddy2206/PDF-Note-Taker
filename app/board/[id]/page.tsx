@@ -184,7 +184,7 @@ export default function BoardPage() {
 
   return (
     <div className="flex h-screen flex-col">
-      <header className="flex items-center gap-3 border-b border-zinc-200 px-4 py-2 dark:border-zinc-800">
+      <header className="flex items-center gap-3 border-b-2 border-zinc-900/40 px-4 py-2 dark:border-zinc-800">
         <Link href="/dashboard" className="text-sm text-indigo-600 hover:underline">
           &larr; Boards
         </Link>
