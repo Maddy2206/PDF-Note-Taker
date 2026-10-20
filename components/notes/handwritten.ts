@@ -6,6 +6,7 @@ import type {
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import { renderNoteImage } from "@/lib/note-image";
 import { nextFreeSpot } from "@/lib/placement";
+import { revealElement } from "./reveal";
 
 export interface NoteMeta {
   kind: "handwritten-note";
@@ -52,7 +53,7 @@ export async function addHandwrittenNote(
     elements: [...existing, note] as never,
     captureUpdate: CaptureUpdateAction.IMMEDIATELY,
   });
-  api.scrollToContent(note, { animate: true, fitToViewport: false });
+  revealElement(api, note);
   return note;
 }
 

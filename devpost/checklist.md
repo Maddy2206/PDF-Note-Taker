@@ -102,6 +102,11 @@ Second round of feedback (learner confirmed all earlier functionality works), im
 - [x] Black and white added to the note colors (white text gets a thin outline so it stays readable)
 - [x] Font list grown from 4 to 14 handwriting fonts, chosen from a dropdown that shows every name in its own font
 
+Third round of feedback (learner confirmed the notebook pages work), implemented:
+- [x] Zooming or resizing the PDF no longer changes the page being read: pages now know their real size from the first frame (sizes of all pages are read up front) and the reading position is kept as "page + how far into it" instead of a scroll ratio measured against temporary placeholder heights
+- [x] Importing a diagram (or exporting a note) no longer shakes or reorients the notes pane: the view is no longer re-centered or animated (new `components/notes/reveal.ts` only adjusts vertical scroll when the item is out of view), the page background now updates in the same frame as the canvas, and Excalidraw is given a stable `initialData` so re-renders (such as saving a new page count) can't reset it
+- [ ] Re-checked by the learner in the browser
+
 ## Code Tour and App Map
 
 - [ ] Learning activity complete — guided route, focused alternative, prior practice connected, or brief recap

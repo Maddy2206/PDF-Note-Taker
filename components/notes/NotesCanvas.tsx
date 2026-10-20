@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Excalidraw } from "@excalidraw/excalidraw";
 import "@excalidraw/excalidraw/index.css";
 import type {
@@ -41,8 +41,6 @@ export default function NotesCanvas({
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [view, setView] = useState<PaperView>({ scrollX: 0, scrollY: 0, zoom: 1 });
-  const viewRaf = useRef<number | null>(null);
-  const pendingView = useRef<PaperView | null>(null);
   const [pages, setPages] = useState(notePages ?? 1);
   const pagesRef = useRef(notePages ?? 1);
   const props = useRef({ notePages, onNotePagesChange });
@@ -91,7 +89,6 @@ export default function NotesCanvas({
 
   useEffect(
     () => () => {
-      if (viewRaf.current) cancelAnimationFrame(viewRaf.current);
       if (timer.current) clearTimeout(timer.current);
     },
     [],
@@ -131,21 +128,17 @@ export default function NotesCanvas({
     files: BinaryFiles,
   ) {
     ensurePages(pagesNeeded(elements));
-    pendingView.current = {
+    // Update the paper in the same frame as the canvas; deferring it made it lag and shake.
+    const next = {
       scrollX: appState.scrollX,
       scrollY: appState.scrollY,
       zoom: appState.zoom.value,
     };
-    if (!viewRaf.current) {
-      viewRaf.current = requestAnimationFrame(() => {
-        viewRaf.current = null;
-        const v = pendingView.current;
-        if (!v) return;
-        setView((prev) =>
-          prev.scrollX === v.scrollX && prev.scrollY === v.scrollY && prev.zoom === v.zoom ? prev : v,
-        );
-      });
-    }
+    setView((prev) =>
+      prev.scrollX === next.scrollX && prev.scrollY === next.scrollY && prev.zoom === next.zoom
+        ? prev
+        : next,
+    );
     const selectedIds = Object.keys(appState.selectedElementIds).filter(
       (k) => appState.selectedElementIds[k],
     );
@@ -177,6 +170,22 @@ export default function NotesCanvas({
     }, SAVE_DELAY_MS);
   }
 
+  // Built once per loaded scene so re-renders never hand Excalidraw a "new" scene.
+  const initialData = useMemo(
+    () => ({
+      elements: (initial?.elements ?? []) as OrderedExcalidrawElement[],
+      appState: {
+        ...(initial?.appState ?? {}),
+        ...(startView
+          ? { scrollX: startView.scrollX, scrollY: startView.scrollY, zoom: { value: startView.zoom } }
+          : {}),
+        viewBackgroundColor: "transparent",
+      } as Partial<AppState>,
+      files: (initial?.files ?? {}) as BinaryFiles,
+    }),
+    [initial, startView],
+  );
+
   return (
     <div
       ref={wrapRef}
@@ -190,21 +199,7 @@ export default function NotesCanvas({
           <Excalidraw
             theme="light"
             excalidrawAPI={handleApi}
-            initialData={{
-              elements: (initial?.elements ?? []) as OrderedExcalidrawElement[],
-              appState: {
-                ...(initial?.appState ?? {}),
-                ...(startView
-                  ? {
-                      scrollX: startView.scrollX,
-                      scrollY: startView.scrollY,
-                      zoom: { value: startView.zoom },
-                    }
-                  : {}),
-                viewBackgroundColor: "transparent",
-              } as Partial<AppState>,
-              files: (initial?.files ?? {}) as BinaryFiles,
-            }}
+            initialData={initialData}
             onChange={handleChange}
           />
           <div className="absolute bottom-16 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-zinc-300 bg-white px-1.5 py-1 text-sm text-zinc-800 shadow">

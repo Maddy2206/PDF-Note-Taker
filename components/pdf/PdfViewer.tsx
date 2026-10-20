@@ -34,31 +34,22 @@ function PageView({
   pageNumber,
   highlights,
   scale,
+  base,
   onClip,
 }: {
   pdf: PDFDocumentProxy;
   pageNumber: number;
   highlights: Highlight[];
   scale: number;
+  /** The page's size at scale 1, so its height is right from the first paint. */
+  base: { w: number; h: number };
   onClip?: (img: DiagramImage) => void | Promise<void>;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ w: 600, h: 800 });
+  const size = { w: base.w * scale, h: base.h * scale };
   const rendered = useRef(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    pdf.getPage(pageNumber).then((page) => {
-      if (cancelled) return;
-      const vp = page.getViewport({ scale });
-      setSize({ w: vp.width, h: vp.height });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [pdf, pageNumber, scale]);
 
   useEffect(() => {
     const wrap = wrapRef.current;
@@ -243,16 +234,44 @@ export default function PdfViewer({
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState<number | null>(initialZoom);
   const [fitScale, setFitScale] = useState(1);
-  const [baseWidth, setBaseWidth] = useState(0);
-  const scrollRatio = useRef<number | null>(null);
+  const [sizes, setSizes] = useState<{ w: number; h: number }[] | null>(null);
+  const baseWidth = sizes?.[0]?.w ?? 0;
+  // Reading position as "which page is at the top, and how far into it".
+  const anchor = useRef<{ page: number; frac: number } | null>(null);
+  const resumeCancelled = useRef(false);
   const scale = zoom ?? fitScale;
   const [pending, setPending] = useState<{ sel: PendingSelection; x: number; y: number } | null>(null);
 
-  // Width of page 1 at scale 1, used to compute "fit to width".
+  // Every page's size at scale 1: gives "fit to width" and keeps page heights right
+  // from the first frame after a zoom (so the reading position can be restored exactly).
   useEffect(() => {
     if (!pdf) return;
-    pdf.getPage(1).then((p) => setBaseWidth(p.getViewport({ scale: 1 }).width));
+    let cancelled = false;
+    (async () => {
+      const out: { w: number; h: number }[] = [];
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const vp = (await pdf.getPage(i)).getViewport({ scale: 1 });
+        out.push({ w: vp.width, h: vp.height });
+      }
+      if (!cancelled) setSizes(out);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [pdf]);
+
+  function captureAnchor() {
+    const el = containerRef.current;
+    if (!el) return;
+    const top = el.getBoundingClientRect().top;
+    for (const n of el.querySelectorAll<HTMLElement>("[data-page]")) {
+      const r = n.getBoundingClientRect();
+      if (r.bottom > top) {
+        anchor.current = { page: Number(n.dataset.page), frac: (top - r.top) / r.height };
+        return;
+      }
+    }
+  }
 
   useEffect(() => {
     const el = containerRef.current;
@@ -274,13 +293,16 @@ export default function PdfViewer({
     };
   }, [baseWidth, pdf]);
 
-  // Keep the reading position when the page size changes.
+  // Keep the reading position (same page, same spot in it) when the page size changes.
   useLayoutEffect(() => {
     const el = containerRef.current;
-    if (el && scrollRatio.current !== null) {
-      el.scrollTop = scrollRatio.current * el.scrollHeight;
-      scrollRatio.current = null;
-    }
+    const a = anchor.current;
+    if (!el || !a) return;
+    const target = el.querySelector<HTMLElement>(`[data-page="${a.page}"]`);
+    if (!target) return;
+    const offset =
+      target.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop;
+    el.scrollTop = offset + a.frac * target.getBoundingClientRect().height;
   }, [scale]);
 
   // Resume at the saved page once page heights are known (they settle asynchronously).
@@ -302,7 +324,7 @@ export default function PdfViewer({
     el.addEventListener("touchstart", stop, { passive: true });
     el.addEventListener("mousedown", stop);
     const goto = () => {
-      if (interacted) return;
+      if (interacted || resumeCancelled.current) return;
       const target = el.querySelector<HTMLElement>(`[data-page="${initialPage}"]`);
       if (target) {
         el.scrollTop = target.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop - 16;
@@ -335,7 +357,15 @@ export default function PdfViewer({
         onPageChangeRef.current?.(page);
       }
     };
+    let raf = 0;
     const onScroll = () => {
+      // remember where the reader is, so a later zoom or resize can keep that spot
+      if (!raf) {
+        raf = requestAnimationFrame(() => {
+          raf = 0;
+          captureAnchor();
+        });
+      }
       if (!restored.current) return;
       clearTimeout(timer);
       timer = setTimeout(report, 300);
@@ -343,13 +373,16 @@ export default function PdfViewer({
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       clearTimeout(timer);
+      if (raf) cancelAnimationFrame(raf);
       el.removeEventListener("scroll", onScroll);
     };
-  }, [pdf]);
+    // The scroll container only exists once the page sizes are known.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pdf, sizes]);
 
   function changeZoom(next: number | null) {
-    const el = containerRef.current;
-    if (el && el.scrollHeight > 0) scrollRatio.current = el.scrollTop / el.scrollHeight;
+    resumeCancelled.current = true;
+    captureAnchor();
     const clamped = next === null ? null : Math.min(Math.max(next, MIN_ZOOM), MAX_ZOOM);
     setZoom(clamped);
     setPending(null);
@@ -398,7 +431,7 @@ export default function PdfViewer({
   }, [blob]);
 
   if (error) return <p className="p-6 text-red-600">{error}</p>;
-  if (!pdf) return <p className="p-6 text-zinc-500">Loading PDF...</p>;
+  if (!pdf || !sizes) return <p className="p-6 text-zinc-500">Loading PDF...</p>;
 
   return (
     <div className="flex h-full flex-col">
@@ -482,6 +515,7 @@ export default function PdfViewer({
           pdf={pdf}
           pageNumber={i + 1}
           scale={scale}
+          base={sizes?.[i] ?? sizes?.[0] ?? { w: 600, h: 800 }}
           onClip={clipMode ? onImportDiagram : undefined}
           highlights={highlights.filter((h) => h.page === i + 1)}
         />

@@ -3,6 +3,7 @@ import type { BinaryFileData, ExcalidrawImperativeAPI } from "@excalidraw/excali
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import { nextFreeSpot } from "@/lib/placement";
 import { fitWidth } from "@/lib/diagram-region";
+import { revealElement } from "./reveal";
 
 /** Adds a clipped PDF diagram as a movable, resizable image at the next free spot. */
 export function addDiagramImage(
@@ -24,6 +25,6 @@ export function addDiagramImage(
     elements: [...existing, diagram] as never,
     captureUpdate: CaptureUpdateAction.IMMEDIATELY,
   });
-  api.scrollToContent(diagram, { animate: true, fitToViewport: false });
+  revealElement(api, diagram);
   return diagram;
 }
