@@ -48,7 +48,7 @@ export default function FontPicker({
       {open && (
         <ul
           role="listbox"
-          className="absolute left-0 top-full z-50 mt-1 grid max-h-80 w-[min(34rem,calc(100vw-2rem))] grid-cols-1 gap-0.5 overflow-auto rounded-lg border border-zinc-200 bg-white p-1.5 shadow-xl sm:grid-cols-2 dark:border-zinc-700 dark:bg-zinc-900"
+          className="absolute left-0 top-full z-50 mt-1 flex max-h-80 w-60 max-w-[calc(100vw-2rem)] flex-col gap-0.5 overflow-y-auto border border-[var(--color-divider)] bg-[var(--color-bg)] p-1.5 shadow-[var(--shadow-md)]"
         >
           {HANDWRITING_FONTS.map((f) => (
             <li key={f.id} role="option" aria-selected={f.id === value}>

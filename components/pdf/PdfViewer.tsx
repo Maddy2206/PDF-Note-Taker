@@ -539,7 +539,7 @@ export default function PdfViewer({
 
   return (
     <div className="flex h-full flex-col">
-    <div className="flex min-h-11 shrink-0 flex-wrap items-center gap-x-1 gap-y-1 border-b border-[var(--color-divider)] bg-[var(--color-bg)] px-2 text-sm">
+    <div className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-[var(--color-divider)] bg-[var(--color-bg)] px-2 text-sm">
       <button
         onClick={() => setShowThumbs((v) => !v)}
         aria-label="Toggle page thumbnails"
@@ -552,7 +552,7 @@ export default function PdfViewer({
           <path d="M9 3v18" />
         </svg>
       </button>
-      <span className="mx-1 h-5 w-px bg-[var(--color-divider)]" aria-hidden />
+      <span className="mx-1.5 h-5 w-px bg-[var(--color-divider)]" aria-hidden />
       <input
         aria-label="Page number"
         value={pageDraft ?? String(current)}
@@ -576,26 +576,23 @@ export default function PdfViewer({
       <span className="tabular-nums text-[color-mix(in_srgb,var(--color-text)_70%,transparent)]">
         / {pdf.numPages}
       </span>
-      <span className="mx-1 h-5 w-px bg-[var(--color-divider)]" aria-hidden />
+      <span className="mx-1.5 h-5 w-px bg-[var(--color-divider)]" aria-hidden />
       <button onClick={() => changeZoom(scale - ZOOM_STEP)} aria-label="Zoom out" className="btn btn-icon">
         &minus;
       </button>
-      <span className="w-11 text-center tabular-nums">{Math.round(scale * 100)}%</span>
+      <span className="w-12 text-center tabular-nums">{Math.round(scale * 100)}%</span>
       <button onClick={() => changeZoom(scale + ZOOM_STEP)} aria-label="Zoom in" className="btn btn-icon">
         +
       </button>
-      <span className="mx-1 h-5 w-px bg-[var(--color-divider)]" aria-hidden />
+      <span className="mx-1.5 h-5 w-px bg-[var(--color-divider)]" aria-hidden />
       <button
-        onClick={() => changeZoom(null)}
-        aria-pressed={zoom === null}
-        className="btn !px-2 aria-pressed:bg-[var(--color-accent)] aria-pressed:text-[var(--color-bg)]"
+        onClick={() => (zoom === null ? fitPage() : changeZoom(null))}
+        title={zoom === null ? "Fit whole page in view" : "Fit page to width"}
+        className="btn !px-2"
       >
-        Fit width
+        {zoom === null ? "Fit page" : "Fit width"}
       </button>
-      <button onClick={fitPage} className="btn !px-2">
-        Fit page
-      </button>
-      <span className="mx-1 h-5 w-px bg-[var(--color-divider)]" aria-hidden />
+      <span className="mx-1.5 h-5 w-px bg-[var(--color-divider)]" aria-hidden />
       {onImportDiagram && (
         <button
           onClick={() => {

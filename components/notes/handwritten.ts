@@ -72,6 +72,7 @@ export async function updateHandwrittenNote(
           fileId,
           width: rendered.width,
           height: rendered.height,
+          opacity: 100,
           version: el.version + 1,
           versionNonce: Math.floor(Math.random() * 2 ** 31),
           updated: Date.now(),
@@ -83,4 +84,35 @@ export async function updateHandwrittenNote(
     elements: elements as never,
     captureUpdate: CaptureUpdateAction.IMMEDIATELY,
   });
+}
+
+/** Hides or shows a note without recording an undo step (used while it is edited in place). */
+export function setNoteHidden(api: ExcalidrawImperativeAPI, elementId: string, hidden: boolean) {
+  const elements = api.getSceneElementsIncludingDeleted().map((el) =>
+    el.id === elementId
+      ? ({
+          ...el,
+          opacity: hidden ? 0 : 100,
+          version: el.version + 1,
+          versionNonce: Math.floor(Math.random() * 2 ** 31),
+        } as ExcalidrawElement)
+      : el,
+  );
+  api.updateScene({ elements: elements as never, captureUpdate: CaptureUpdateAction.NEVER });
+}
+
+/** Deletes a note (undoable). */
+export function removeNote(api: ExcalidrawImperativeAPI, elementId: string) {
+  const elements = api.getSceneElementsIncludingDeleted().map((el) =>
+    el.id === elementId
+      ? ({
+          ...el,
+          opacity: 100,
+          isDeleted: true,
+          version: el.version + 1,
+          versionNonce: Math.floor(Math.random() * 2 ** 31),
+        } as ExcalidrawElement)
+      : el,
+  );
+  api.updateScene({ elements: elements as never, captureUpdate: CaptureUpdateAction.IMMEDIATELY });
 }

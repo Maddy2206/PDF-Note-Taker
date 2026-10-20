@@ -12,8 +12,14 @@ import type { OrderedExcalidrawElement } from "@excalidraw/excalidraw/element/ty
 import { loadScene, saveScene } from "@/lib/storage";
 import { PAGE_W, STRIDE, pageTop, pagesNeeded } from "@/lib/pages";
 import PaperBackground, { type PaperView } from "./PaperBackground";
-import EditNoteDialog from "./EditNoteDialog";
-import { getNoteMeta, updateHandwrittenNote, type NoteMeta } from "./handwritten";
+import InlineNoteEditor from "./InlineNoteEditor";
+import {
+  getNoteMeta,
+  removeNote,
+  setNoteHidden,
+  updateHandwrittenNote,
+  type NoteMeta,
+} from "./handwritten";
 import type { Paper, SceneRecord } from "@/lib/types";
 
 const SAVE_DELAY_MS = 800;
@@ -49,19 +55,34 @@ export default function NotesCanvas({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
   const [selectedNote, setSelectedNote] = useState<{ id: string; meta: NoteMeta } | null>(null);
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState<{ id: string; meta: NoteMeta; x: number; y: number } | null>(null);
   const [saveError, setSaveError] = useState(false);
 
   useEffect(() => {
     props.current = { notePages, onNotePagesChange };
   });
 
+  // When the pane changes width (PDF / Split / Notes), re-center the current page in it.
+  const lastWidth = useRef<number | null>(null);
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    const observer = new ResizeObserver(() =>
-      setSize({ w: el.clientWidth, h: el.clientHeight }),
-    );
+    const observer = new ResizeObserver(() => {
+      setSize({ w: el.clientWidth, h: el.clientHeight });
+      const prev = lastWidth.current;
+      lastWidth.current = el.clientWidth;
+      const api = apiRef.current;
+      if (!api || prev === null || el.clientWidth === 0 || Math.abs(el.clientWidth - prev) < 8) return;
+      const st = api.getAppState();
+      const page = Math.min(
+        Math.max(Math.floor((el.clientHeight / 2 / st.zoom.value - st.scrollY) / STRIDE), 0),
+        pagesRef.current - 1,
+      );
+      const v = viewForPage(el.clientWidth, page);
+      api.updateScene({
+        appState: { scrollX: v.scrollX, scrollY: v.scrollY, zoom: { value: v.zoom } } as never,
+      });
+    });
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
@@ -120,6 +141,31 @@ export default function NotesCanvas({
   function addPage() {
     ensurePages(pagesRef.current + 1);
     goToPage(pagesRef.current - 1);
+  }
+
+  function startEdit(id: string, meta: NoteMeta) {
+    const api = apiRef.current;
+    const el = api?.getSceneElements().find((e) => e.id === id);
+    if (!api || !el) return;
+    setNoteHidden(api, id, true);
+    setEditing({ id, meta, x: el.x, y: el.y });
+  }
+
+  async function commitEdit(text: string) {
+    const api = apiRef.current;
+    const cur = editing;
+    setEditing(null);
+    if (!api || !cur) return;
+    const next = text.replace(/\s+$/, "");
+    if (!next.trim()) removeNote(api, cur.id);
+    else if (next === cur.meta.text) setNoteHidden(api, cur.id, false);
+    else await updateHandwrittenNote(api, cur.id, { text: next, font: cur.meta.font, color: cur.meta.color });
+  }
+
+  function cancelEdit() {
+    const api = apiRef.current;
+    if (api && editing) setNoteHidden(api, editing.id, false);
+    setEditing(null);
   }
 
   function handleChange(
@@ -189,6 +235,17 @@ export default function NotesCanvas({
   return (
     <div
       ref={wrapRef}
+      onDoubleClick={(e) => {
+        if (!selectedNote || editing) return;
+        const el = apiRef.current?.getSceneElements().find((x) => x.id === selectedNote.id);
+        const box = wrapRef.current?.getBoundingClientRect();
+        if (!el || !box) return;
+        const px = (e.clientX - box.left) / view.zoom - view.scrollX;
+        const py = (e.clientY - box.top) / view.zoom - view.scrollY;
+        if (px >= el.x && px <= el.x + el.width && py >= el.y && py <= el.y + el.height) {
+          startEdit(selectedNote.id, selectedNote.meta);
+        }
+      }}
       className="relative h-full w-full [&_.excalidraw]:!bg-transparent [&_.excalidraw_.excalidraw-container]:!bg-transparent"
     >
       {initial === undefined ? (
@@ -243,22 +300,22 @@ export default function NotesCanvas({
               Couldn&apos;t save your notes. Browser storage may be full or blocked.
             </p>
           )}
-          {selectedNote && (
+          {selectedNote && !editing && (
             <button
-              onClick={() => setEditing(true)}
+              onClick={() => startEdit(selectedNote.id, selectedNote.meta)}
               className="absolute left-3 top-16 z-10 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow"
             >
-              Edit handwritten note
+              Edit text
             </button>
           )}
-          {editing && selectedNote && (
-            <EditNoteDialog
-              initial={selectedNote.meta}
-              onClose={() => setEditing(false)}
-              onSave={async (meta) => {
-                if (apiRef.current) await updateHandwrittenNote(apiRef.current, selectedNote.id, meta);
-                setEditing(false);
-              }}
+          {editing && (
+            <InlineNoteEditor
+              meta={editing.meta}
+              x={(editing.x + view.scrollX) * view.zoom}
+              y={(editing.y + view.scrollY) * view.zoom}
+              zoom={view.zoom}
+              onCommit={commitEdit}
+              onCancel={cancelEdit}
             />
           )}
         </>

@@ -2,8 +2,8 @@ import { getFont, isWhite } from "./handwriting-fonts";
 import { LINE } from "./pages";
 
 /** Text wraps at the width of a notebook page, one handwritten row per ruled line. */
-const MAX_WIDTH = 690;
-const PAD = 8;
+export const MAX_WIDTH = 690;
+export const PAD = 8;
 const PIXEL_RATIO = 2;
 
 export interface RenderedNote {
