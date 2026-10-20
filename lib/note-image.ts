@@ -1,7 +1,6 @@
-import { getFont } from "./handwriting-fonts";
-import { LINE } from "./placement";
+import { getFont, isWhite } from "./handwriting-fonts";
+import { LINE } from "./pages";
 
-const FONT_SIZE = 30;
 /** Text wraps at the width of a notebook page, one handwritten row per ruled line. */
 const MAX_WIDTH = 690;
 const PAD = 8;
@@ -39,11 +38,11 @@ export async function renderNoteImage(
   color: string,
 ): Promise<RenderedNote> {
   const font = getFont(fontId);
-  const fontSpec = `${FONT_SIZE}px ${font.family}`;
+  const fontSpec = `${font.size}px ${font.family}`;
   // Load only the primary family: next/font also lists a local "Fallback" face
   // that can fail on machines without that system font, rejecting the whole load.
   try {
-    await document.fonts.load(`${FONT_SIZE}px ${font.family.split(",")[0]}`, text);
+    await document.fonts.load(`${font.size}px ${font.family.split(",")[0]}`, text);
   } catch {
     // draw with whatever font is available rather than failing the export
   }
@@ -66,6 +65,13 @@ export async function renderNoteImage(
 
   lines.forEach((line, i) => {
     const y = i * lineH;
+    if (isWhite(color)) {
+      // thin outline so white text can still be read on a white page
+      ctx.lineWidth = 3;
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "rgba(55, 65, 81, 0.75)";
+      ctx.strokeText(line, PAD, y + lineH * 0.74);
+    }
     ctx.fillStyle = color;
     ctx.fillText(line, PAD, y + lineH * 0.74);
   });

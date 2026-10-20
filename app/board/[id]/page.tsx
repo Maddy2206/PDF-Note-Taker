@@ -139,6 +139,7 @@ export default function BoardPage() {
         elements: api.getSceneElements(),
         files: api.getFiles(),
         paper: board.paper,
+        pages: board.notePages ?? 1,
         fileName: board.name,
       });
       if (!ok) setNotice("Nothing to download yet. Add some notes first.");
@@ -235,7 +236,15 @@ export default function BoardPage() {
               onLoaded={(pageCount) => updateBoard(id, { pageCount })}
             />
           }
-          notes={<NotesCanvas boardId={id} onApi={handleApi} paper={board.paper} />}
+          notes={
+            <NotesCanvas
+              boardId={id}
+              onApi={handleApi}
+              paper={board.paper}
+              notePages={board.notePages}
+              onNotePagesChange={(notePages) => save({ notePages })}
+            />
+          }
         />
       </div>
     </div>

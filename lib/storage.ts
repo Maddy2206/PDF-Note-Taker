@@ -56,6 +56,7 @@ export async function createBoard(
     dividerRatio: 0.5,
     paneVisibility: { pdf: true, notes: true },
     paper,
+    notePages: 1,
   };
   const d = await db();
   const tx = d.transaction(["boards", "pdfs"], "readwrite");

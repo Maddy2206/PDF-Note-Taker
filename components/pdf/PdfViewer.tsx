@@ -7,10 +7,12 @@ import {
   HANDWRITING_FONTS,
   HIGHLIGHT_COLORS,
   getFont,
+  isWhite,
   type FontId,
 } from "@/lib/handwriting-fonts";
 import { mostVisiblePage } from "@/lib/visible-page";
 import SelectionPopout from "./SelectionPopout";
+import FontPicker from "@/components/ui/FontPicker";
 import DiagramSelect, { type DiagramImage } from "./DiagramSelect";
 import "pdfjs-dist/web/pdf_viewer.css";
 
@@ -113,7 +115,7 @@ function PageView({
                 top: `${r.y * 100}%`,
                 width: `${r.w * 100}%`,
                 height: `${r.h * 100}%`,
-                background: h.color,
+                background: isWhite(h.color) ? "#9ca3af" : h.color,
                 opacity: 0.35,
               }}
             />
@@ -454,23 +456,12 @@ export default function PdfViewer({
             aria-pressed={ink === c.value}
             onClick={() => pickInk(c.value)}
             style={{ background: c.value }}
-            className="h-6 w-6 rounded-full border border-black/10 aria-pressed:ring-2 aria-pressed:ring-indigo-500 aria-pressed:ring-offset-1"
+            className="h-6 w-6 rounded-full border border-black/25 aria-pressed:ring-2 aria-pressed:ring-indigo-500 aria-pressed:ring-offset-1"
           />
         ))}
       </div>
-      <div className="ml-2 flex flex-wrap items-center gap-1" role="group" aria-label="Handwriting font">
-        {HANDWRITING_FONTS.map((f) => (
-          <button
-            key={f.id}
-            type="button"
-            onClick={() => pickFont(f.id)}
-            aria-pressed={fontId === f.id}
-            style={{ fontFamily: f.family }}
-            className="rounded border border-zinc-300 px-2 py-0.5 text-base leading-tight text-zinc-900 hover:bg-zinc-100 aria-pressed:border-indigo-600 aria-pressed:bg-indigo-600 aria-pressed:text-white dark:border-zinc-600 dark:text-zinc-100 dark:hover:bg-zinc-800"
-          >
-            {f.label}
-          </button>
-        ))}
+      <div className="ml-2">
+        <FontPicker value={fontId} onChange={pickFont} />
       </div>
     </div>
     {noText && (

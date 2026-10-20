@@ -16,6 +16,8 @@ export interface Board {
   dividerRatio: number;
   paneVisibility: PaneVisibility;
   paper: Paper;
+  /** Number of notebook pages in the notes pane (undefined means 1). */
+  notePages?: number;
   /** PDF zoom factor; null/undefined means fit to the pane width. */
   pdfZoom?: number | null;
 }

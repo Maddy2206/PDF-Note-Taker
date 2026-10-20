@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import {
-  HANDWRITING_FONTS,
-  HIGHLIGHT_COLORS,
-} from "@/lib/handwriting-fonts";
+import { HIGHLIGHT_COLORS } from "@/lib/handwriting-fonts";
+import FontPicker from "@/components/ui/FontPicker";
 import type { NoteMeta } from "./handwritten";
 
 export default function EditNoteDialog({
@@ -37,18 +35,7 @@ export default function EditNoteDialog({
           className="w-full rounded-md border border-zinc-300 bg-transparent p-2 dark:border-zinc-700"
         />
         <div className="flex items-center gap-3">
-          <select
-            value={font}
-            onChange={(e) => setFont(e.target.value)}
-            aria-label="Handwriting font"
-            className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-          >
-            {HANDWRITING_FONTS.map((f) => (
-              <option key={f.id} value={f.id} className="bg-white text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
-                {f.label}
-              </option>
-            ))}
-          </select>
+          <FontPicker value={font} onChange={setFont} />
           <div className="flex gap-1">
             {HIGHLIGHT_COLORS.map((c) => (
               <button
@@ -58,7 +45,7 @@ export default function EditNoteDialog({
                 aria-pressed={color === c.value}
                 onClick={() => setColor(c.value)}
                 style={{ background: c.value }}
-                className="h-6 w-6 rounded-full border border-black/10 aria-pressed:ring-2 aria-pressed:ring-indigo-500"
+                className="h-6 w-6 rounded-full border border-black/25 aria-pressed:ring-2 aria-pressed:ring-indigo-500"
               />
             ))}
           </div>

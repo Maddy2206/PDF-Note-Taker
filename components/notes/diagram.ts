@@ -14,8 +14,8 @@ export function addDiagramImage(
     { id, dataURL: img.dataURL as BinaryFileData["dataURL"], mimeType: "image/png", created: Date.now() },
   ]);
   const existing = api.getSceneElementsIncludingDeleted();
-  const { x, y } = nextFreeSpot(existing);
   const size = fitWidth(img.width, img.height);
+  const { x, y } = nextFreeSpot(existing, size.height);
   const [el] = convertToExcalidrawElements([
     { type: "image", x, y, width: size.width, height: size.height, fileId: id, status: "saved" },
   ]);

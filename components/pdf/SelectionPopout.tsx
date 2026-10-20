@@ -40,7 +40,7 @@ export default function SelectionPopout({
         title="Change the color and font in the toolbar above the PDF"
       >
         <span
-          className="h-6 w-6 shrink-0 rounded-full border border-black/10"
+          className="h-6 w-6 shrink-0 rounded-full border border-black/25"
           style={{ background: color }}
           aria-hidden
         />

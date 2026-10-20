@@ -1,7 +1,7 @@
-import { exportToCanvas } from "@excalidraw/excalidraw";
+import { convertToExcalidrawElements, exportToCanvas } from "@excalidraw/excalidraw";
 import type { BinaryFiles } from "@excalidraw/excalidraw/types";
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
-import { pageHeightInPixels, sliceHeights } from "./page-slices";
+import { LINE, MARGIN_LINE_X, PAGE_H, PAGE_W, STRIDE } from "./pages";
 
 export function sanitizeFileName(name: string): string {
   const cleaned = name
@@ -11,68 +11,87 @@ export function sanitizeFileName(name: string): string {
   return (cleaned || "notes").slice(0, 100);
 }
 
-const PADDING = 40;
-const LINE_SPACING = 40;
+/** Keep the export canvas under typical browser limits (about 16k px per side). */
+const MAX_CANVAS_SIDE = 15000;
 
-/** Returns false (and writes nothing) if the scene has no elements. */
+/**
+ * Writes one PDF page per notebook page. Returns false (and writes nothing) if
+ * the notes are empty.
+ */
 export async function exportNotesPdf(opts: {
   elements: readonly ExcalidrawElement[];
   files: BinaryFiles;
   paper: "lined" | "blank";
+  pages: number;
   fileName: string;
 }): Promise<boolean> {
-  const elements = opts.elements.filter((e) => !e.isDeleted);
-  if (elements.length === 0) return false;
+  const live = opts.elements.filter((e) => !e.isDeleted);
+  if (live.length === 0) return false;
+  const pages = Math.max(1, opts.pages);
+
+  // Scene area to export: every page, plus anything the learner drew outside them.
+  const minX = Math.min(0, ...live.map((e) => e.x));
+  const minY = Math.min(0, ...live.map((e) => e.y));
+  const maxX = Math.max(PAGE_W, ...live.map((e) => e.x + e.width));
+  const maxY = Math.max((pages - 1) * STRIDE + PAGE_H, ...live.map((e) => e.y + e.height));
+  const scale = Math.min(2, MAX_CANVAS_SIDE / (maxY - minY), MAX_CANVAS_SIDE / (maxX - minX));
+
+  // Invisible dots in two corners make the export cover that whole area.
+  const corners = convertToExcalidrawElements([
+    { type: "rectangle", x: minX, y: minY, width: 1, height: 1, strokeColor: "transparent", backgroundColor: "transparent" },
+    { type: "rectangle", x: maxX - 1, y: maxY - 1, width: 1, height: 1, strokeColor: "transparent", backgroundColor: "transparent" },
+  ]);
 
   const { jsPDF } = await import("jspdf");
   const src = await exportToCanvas({
-    elements,
+    elements: [...corners, ...live],
     files: opts.files,
-    appState: { exportBackground: true, viewBackgroundColor: "#ffffff" },
-    exportPadding: PADDING,
+    appState: { exportBackground: false },
+    exportPadding: 0,
+    getDimensions: (width: number, height: number) => ({ width: width * scale, height: height * scale, scale }),
   });
 
-  const pageW = 210;
-  const pageH = 297;
-  const margin = 12;
-  const contentW = pageW - margin * 2;
-  const contentH = pageH - margin * 2;
-
-  const pagePx = pageHeightInPixels(src.width, contentW, contentH);
-  const slices = sliceHeights(src.height, pagePx);
-  // Scene y = 40k is a ruled line on screen; find those rows in the exported canvas.
-  const minY = Math.min(...elements.map((e) => e.y));
-  const lineOffset = (((PADDING - minY) % LINE_SPACING) + LINE_SPACING) % LINE_SPACING;
+  // Canvas pixels per scene unit (measured, so it stays right whatever the library did).
+  const k = src.width / (maxX - minX);
   const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
-  const mmPerPx = contentW / src.width;
+  const pdfW = 210;
+  const pdfH = Math.min(297, (pdfW * PAGE_H) / PAGE_W);
 
-  slices.forEach((s, i) => {
+  for (let i = 0; i < pages; i++) {
+    const w = Math.round(PAGE_W * k);
+    const h = Math.round(PAGE_H * k);
     const page = document.createElement("canvas");
-    page.width = src.width;
-    page.height = pagePx;
+    page.width = w;
+    page.height = h;
     const ctx = page.getContext("2d");
-    if (!ctx) return;
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, page.width, page.height);
-    if (opts.paper === "lined") {
+    if (!ctx) continue;
+
+    const lined = opts.paper === "lined";
+    ctx.fillStyle = lined ? "#fffdf8" : "#ffffff";
+    ctx.fillRect(0, 0, w, h);
+    if (lined) {
+      // same rows as on screen: a ruled line at the bottom of every 40-unit row
       ctx.strokeStyle = "rgba(96, 140, 200, 0.45)";
-      ctx.lineWidth = 2;
-      const first = lineOffset + Math.ceil((s.sy - lineOffset) / LINE_SPACING) * LINE_SPACING;
-      for (let y = first; y < s.sy + pagePx; y += LINE_SPACING) {
+      ctx.lineWidth = Math.max(1, k);
+      for (let y = LINE; y <= PAGE_H; y += LINE) {
         ctx.beginPath();
-        ctx.moveTo(0, y - s.sy);
-        ctx.lineTo(page.width, y - s.sy);
+        ctx.moveTo(0, y * k);
+        ctx.lineTo(w, y * k);
         ctx.stroke();
       }
+      ctx.strokeStyle = "rgba(220, 80, 80, 0.5)";
+      ctx.beginPath();
+      ctx.moveTo(MARGIN_LINE_X * k, 0);
+      ctx.lineTo(MARGIN_LINE_X * k, h);
+      ctx.stroke();
     }
-    // The export canvas is opaque white; multiply keeps ruled lines visible under it.
-    ctx.globalCompositeOperation = "multiply";
-    ctx.drawImage(src, 0, s.sy, src.width, s.sh, 0, 0, src.width, s.sh);
-    ctx.globalCompositeOperation = "source-over";
+    ctx.drawImage(src, (0 - minX) * k, (i * STRIDE - minY) * k, w, h, 0, 0, w, h);
+
     if (i > 0) pdf.addPage();
-    pdf.addImage(page.toDataURL("image/jpeg", 0.92), "JPEG", margin, margin, contentW, pagePx * mmPerPx);
-  });
+    pdf.addImage(page.toDataURL("image/jpeg", 0.92), "JPEG", 0, (297 - pdfH) / 2, pdfW, pdfH);
+  }
 
   pdf.save(`${sanitizeFileName(opts.fileName)}.pdf`);
   return true;
 }
+

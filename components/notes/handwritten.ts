@@ -35,7 +35,7 @@ export async function addHandwrittenNote(
   const rendered = await renderNoteImage(meta.text, meta.font, meta.color);
   const fileId = await addImageFile(api, rendered.dataURL);
   const existing = api.getSceneElementsIncludingDeleted();
-  const { x, y } = nextFreeSpot(existing);
+  const { x, y } = nextFreeSpot(existing, rendered.height);
   const [img] = convertToExcalidrawElements([
     {
       type: "image",

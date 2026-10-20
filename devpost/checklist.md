@@ -96,6 +96,12 @@ Learner feedback from the first full try-out, implemented (verified by lint, bui
 
 - [ ] Final review complete — feedback resolved and learner confirms ready to ship
 
+Second round of feedback (learner confirmed all earlier functionality works), implemented, verified by lint, build and placement logic only:
+- [x] Notes pane is page by page: stacked A4-shaped notebook pages with a gap, "+ Add page", previous/next, "Fit page", page counter; pages are added automatically if content runs past the last page; new notes and diagrams that would cross a page's bottom margin start on the next page
+- [x] Download PDF writes one PDF page per notebook page
+- [x] Black and white added to the note colors (white text gets a thin outline so it stays readable)
+- [x] Font list grown from 4 to 14 handwriting fonts, chosen from a dropdown that shows every name in its own font
+
 ## Code Tour and App Map
 
 - [ ] Learning activity complete — guided route, focused alternative, prior practice connected, or brief recap
@@ -116,3 +122,4 @@ Activity mode: [live app and editor, explicit static fallback, focused alternati
 - Learner feedback after slice 3 (early checkpoint): added PDF zoom (zoom in/out and Fit width, saved per board as `pdfZoom`); notes are now written in the chosen color (palette changed to ink colors: blue, red, green, purple, orange) instead of black text on a colored band; note changes are recorded in Excalidraw's history and Ctrl+Z / Ctrl+Y work even when focus is on the PDF side. Also fixed highlights picking up whole page containers on triple-click selection. The diagram button and lined paper the learner asked for are slices 4 and 5, not yet built.
 - Slices 4, 5 and 6 were built by three parallel agents in separate git worktrees. The first launch was lost when the session ended (nothing had been committed), so all three were relaunched from the same commit. They were merged one at a time; slice 6 conflicted with slice 4 in `PdfViewer.tsx` and the board page only by both adding props, resolved by keeping both. The agents could not use the shared browser, so each verified with lint, type-check and logic scripts only.
 - The browser testing tool disconnected after slice 3. Slices 4-7 have been verified with lint, `npm run build` and logic scripts (page slicing) but NOT yet clicked through in a real browser; the final kick-the-tires review is where that happens.
+- "Page by page" notes: Excalidraw is an infinite canvas, so pages are drawn behind a transparent canvas (`PaperBackground`) and enforced by placement rules (`lib/pages.ts`, `lib/placement.ts`), not by blocking drawing outside a page. The learner can still draw or pan into the gap between pages. `Board.notePages` stores the page count. `lib/page-slices.ts` was removed because the PDF export now cuts exactly along page boundaries.
