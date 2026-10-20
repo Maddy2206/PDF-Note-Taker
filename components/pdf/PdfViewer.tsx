@@ -377,7 +377,6 @@ export default function PdfViewer({
       el.removeEventListener("scroll", onScroll);
     };
     // The scroll container only exists once the page sizes are known.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pdf, sizes]);
 
   function changeZoom(next: number | null) {
