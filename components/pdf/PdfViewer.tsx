@@ -304,6 +304,14 @@ export default function PdfViewer({
   const [current, setCurrent] = useState(initialPage);
   const [pageDraft, setPageDraft] = useState<string | null>(null);
   const [showThumbs, setShowThumbs] = useState(true);
+  const [colorOpen, setColorOpen] = useState(false);
+
+  useEffect(() => {
+    if (!colorOpen) return;
+    const close = () => setColorOpen(false);
+    window.addEventListener("click", close);
+    return () => window.removeEventListener("click", close);
+  }, [colorOpen]);
   const [pending, setPending] = useState<{ sel: PendingSelection; x: number; y: number } | null>(null);
 
   // Every page's size at scale 1: gives "fit to width" and keeps page heights right
@@ -531,7 +539,7 @@ export default function PdfViewer({
 
   return (
     <div className="flex h-full flex-col">
-    <div className="flex h-11 shrink-0 items-center gap-1 border-b border-[var(--color-divider)] bg-[var(--color-bg)] px-2 text-sm">
+    <div className="flex min-h-11 shrink-0 flex-wrap items-center gap-x-1 gap-y-1 border-b border-[var(--color-divider)] bg-[var(--color-bg)] px-2 text-sm">
       <button
         onClick={() => setShowThumbs((v) => !v)}
         aria-label="Toggle page thumbnails"
@@ -572,7 +580,7 @@ export default function PdfViewer({
       <button onClick={() => changeZoom(scale - ZOOM_STEP)} aria-label="Zoom out" className="btn btn-icon">
         &minus;
       </button>
-      <span className="w-12 text-center tabular-nums">{Math.round(scale * 100)}%</span>
+      <span className="w-11 text-center tabular-nums">{Math.round(scale * 100)}%</span>
       <button onClick={() => changeZoom(scale + ZOOM_STEP)} aria-label="Zoom in" className="btn btn-icon">
         +
       </button>
@@ -580,53 +588,68 @@ export default function PdfViewer({
       <button
         onClick={() => changeZoom(null)}
         aria-pressed={zoom === null}
-        className="btn aria-pressed:bg-[var(--color-accent)] aria-pressed:text-[var(--color-bg)]"
+        className="btn !px-2 aria-pressed:bg-[var(--color-accent)] aria-pressed:text-[var(--color-bg)]"
       >
         Fit width
       </button>
-      <button onClick={fitPage} className="btn">
+      <button onClick={fitPage} className="btn !px-2">
         Fit page
       </button>
-    </div>
-    <div className="flex shrink-0 flex-wrap items-center gap-x-1 gap-y-1.5 border-b border-[var(--color-divider)] bg-[var(--color-bg)] px-2 py-1.5 text-sm">
+      <span className="mx-1 h-5 w-px bg-[var(--color-divider)]" aria-hidden />
       {onImportDiagram && (
-        <>
-          <button
-            onClick={() => {
-              window.getSelection()?.removeAllRanges();
-              setPending(null);
-              setClipMode((v) => !v);
-            }}
-            aria-pressed={clipMode}
-            className="rounded border border-indigo-300 px-2 py-0.5 font-medium text-indigo-700 hover:bg-indigo-50 aria-pressed:border-indigo-600 aria-pressed:bg-indigo-600 aria-pressed:text-white dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-zinc-800"
-          >
-            Clip diagram
-          </button>
-          {clipMode && (
-            <span className="ml-2 text-zinc-600 dark:text-zinc-300">
-              Drag a box around the diagram (Esc to exit)
-            </span>
-          )}
-        </>
+        <button
+          onClick={() => {
+            window.getSelection()?.removeAllRanges();
+            setPending(null);
+            setClipMode((v) => !v);
+          }}
+          aria-pressed={clipMode}
+          title="Drag a box around a diagram (Esc to exit)"
+          className="btn btn-secondary !px-2 aria-pressed:bg-[var(--color-accent)] aria-pressed:text-[var(--color-bg)]"
+        >
+          {clipMode ? "Drag a box… (Esc)" : "Clip diagram"}
+        </button>
       )}
-      <span className="mx-2 h-6 w-px bg-zinc-300 dark:bg-zinc-600" aria-hidden />
-      <div className="flex items-center gap-1.5" role="group" aria-label="Note color">
-        {HIGHLIGHT_COLORS.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            title={c.label}
-            aria-label={c.label}
-            aria-pressed={ink === c.value}
-            onClick={() => pickInk(c.value)}
-            style={{ background: c.value }}
-            className="h-6 w-6 rounded-full border border-black/25 aria-pressed:ring-2 aria-pressed:ring-indigo-500 aria-pressed:ring-offset-1"
+      <div className="relative" onClick={(e) => e.stopPropagation()}>
+        <button
+          onClick={() => setColorOpen((v) => !v)}
+          aria-haspopup="listbox"
+          aria-expanded={colorOpen}
+          aria-label="Note color"
+          className="btn btn-secondary gap-1.5 !px-2"
+        >
+          <span
+            className="h-4 w-4 border border-black/30"
+            style={{ background: ink }}
+            aria-hidden
           />
-        ))}
+          <span aria-hidden className="text-[10px]">▾</span>
+        </button>
+        {colorOpen && (
+          <div
+            role="listbox"
+            aria-label="Note color"
+            className="absolute left-0 top-full z-30 mt-1 w-40 border border-[var(--color-divider)] bg-[var(--color-bg)] p-1 shadow-[var(--shadow-md)]"
+          >
+            {HIGHLIGHT_COLORS.map((c) => (
+              <button
+                key={c.id}
+                role="option"
+                aria-selected={ink === c.value}
+                onClick={() => {
+                  pickInk(c.value);
+                  setColorOpen(false);
+                }}
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-[13px] hover:bg-[var(--color-surface)] aria-selected:font-extrabold"
+              >
+                <span className="h-4 w-4 border border-black/30" style={{ background: c.value }} aria-hidden />
+                {c.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
-      <div className="ml-2">
-        <FontPicker value={fontId} onChange={pickFont} />
-      </div>
+      <FontPicker value={fontId} onChange={pickFont} />
     </div>
     {noText && (
       <p role="status" className="shrink-0 bg-amber-100 px-3 py-1.5 text-sm text-amber-900">
