@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
+import type { Highlight, HighlightRect } from "@/lib/types";
+import type { FontId } from "@/lib/handwriting-fonts";
+import SelectionPopout from "./SelectionPopout";
 import "pdfjs-dist/web/pdf_viewer.css";
 
 const SCALE = 1.3;
@@ -15,7 +18,15 @@ async function loadPdfjs() {
   return pdfjs;
 }
 
-function PageView({ pdf, pageNumber }: { pdf: PDFDocumentProxy; pageNumber: number }) {
+function PageView({
+  pdf,
+  pageNumber,
+  highlights,
+}: {
+  pdf: PDFDocumentProxy;
+  pageNumber: number;
+  highlights: Highlight[];
+}) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
@@ -77,6 +88,25 @@ function PageView({ pdf, pageNumber }: { pdf: PDFDocumentProxy; pageNumber: numb
       style={{ width: size.w, height: size.h }}
     >
       <canvas ref={canvasRef} className="absolute left-0 top-0" />
+      <div className="pointer-events-none absolute inset-0" aria-hidden>
+        {highlights.flatMap((h) =>
+          h.rects.map((r, i) => (
+            <div
+              key={`${h.id}-${i}`}
+              data-highlight={h.id}
+              className="absolute mix-blend-multiply"
+              style={{
+                left: `${r.x * 100}%`,
+                top: `${r.y * 100}%`,
+                width: `${r.w * 100}%`,
+                height: `${r.h * 100}%`,
+                background: h.color,
+                opacity: 0.6,
+              }}
+            />
+          )),
+        )}
+      </div>
       <div
         ref={textRef}
         className="textLayer absolute left-0 top-0"
@@ -86,15 +116,79 @@ function PageView({ pdf, pageNumber }: { pdf: PDFDocumentProxy; pageNumber: numb
   );
 }
 
+export interface PendingSelection {
+  text: string;
+  pages: { page: number; rects: HighlightRect[] }[];
+}
+
+/** Reads the current text selection and converts it to page-relative rectangles. */
+function readSelection(container: HTMLElement): { sel: PendingSelection; x: number; y: number } | null {
+  const selection = window.getSelection();
+  if (!selection || selection.isCollapsed || selection.rangeCount === 0) return null;
+  const range = selection.getRangeAt(0);
+  if (!container.contains(range.commonAncestorContainer)) return null;
+  const text = selection.toString().replace(/\s+/g, " ").trim();
+  if (!text) return null;
+
+  const clientRects = Array.from(range.getClientRects()).filter(
+    (r) => r.width > 2 && r.height > 2,
+  );
+  const pages: PendingSelection["pages"] = [];
+  container.querySelectorAll<HTMLElement>("[data-page]").forEach((pageEl) => {
+    const pr = pageEl.getBoundingClientRect();
+    const rects: HighlightRect[] = [];
+    for (const r of clientRects) {
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      if (cx < pr.left || cx > pr.right || cy < pr.top || cy > pr.bottom) continue;
+      const rect = {
+        x: (r.left - pr.left) / pr.width,
+        y: (r.top - pr.top) / pr.height,
+        w: r.width / pr.width,
+        h: r.height / pr.height,
+      };
+      const dup = rects.some(
+        (o) =>
+          Math.abs(o.x - rect.x) < 0.002 &&
+          Math.abs(o.y - rect.y) < 0.002 &&
+          Math.abs(o.w - rect.w) < 0.002,
+      );
+      if (!dup) rects.push(rect);
+    }
+    if (rects.length) pages.push({ page: Number(pageEl.dataset.page), rects });
+  });
+  if (pages.length === 0) return null;
+  const last = clientRects[clientRects.length - 1];
+  return { sel: { text, pages }, x: last.left + last.width / 2, y: last.bottom + 8 };
+}
+
 export default function PdfViewer({
   blob,
+  highlights = [],
   onLoaded,
+  onExport,
 }: {
   blob: Blob;
+  highlights?: Highlight[];
   onLoaded?: (pageCount: number) => void;
+  onExport?: (sel: PendingSelection, color: string, font: FontId) => void;
 }) {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [pending, setPending] = useState<{ sel: PendingSelection; x: number; y: number } | null>(null);
+
+  function handleSelect() {
+    const container = containerRef.current;
+    if (!container) return;
+    // let the browser finish updating the selection first
+    setTimeout(() => setPending(readSelection(container)), 0);
+  }
+
+  function dismiss() {
+    window.getSelection()?.removeAllRanges();
+    setPending(null);
+  }
 
   useEffect(() => {
     let doc: PDFDocumentProxy | null = null;
@@ -122,10 +216,31 @@ export default function PdfViewer({
   if (!pdf) return <p className="p-6 text-zinc-500">Loading PDF...</p>;
 
   return (
-    <div className="h-full overflow-auto bg-zinc-200 p-4 dark:bg-zinc-800">
+    <div
+      ref={containerRef}
+      onMouseUp={handleSelect}
+      onScroll={() => pending && setPending(null)}
+      className="h-full overflow-auto bg-zinc-200 p-4 dark:bg-zinc-800"
+    >
       {Array.from({ length: pdf.numPages }, (_, i) => (
-        <PageView key={i} pdf={pdf} pageNumber={i + 1} />
+        <PageView
+          key={i}
+          pdf={pdf}
+          pageNumber={i + 1}
+          highlights={highlights.filter((h) => h.page === i + 1)}
+        />
       ))}
+      {pending && (
+        <SelectionPopout
+          x={pending.x}
+          y={pending.y}
+          onDismiss={dismiss}
+          onExport={(color, font) => {
+            onExport?.(pending.sel, color, font);
+            dismiss();
+          }}
+        />
+      )}
     </div>
   );
 }

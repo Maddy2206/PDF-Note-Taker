@@ -1,12 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { getBoard, getPdf, updateBoard } from "@/lib/storage";
-import type { Board, PaneVisibility } from "@/lib/types";
+import {
+  getBoard,
+  getPdf,
+  listHighlights,
+  saveHighlight,
+  updateBoard,
+} from "@/lib/storage";
+import type { Board, Highlight, PaneVisibility } from "@/lib/types";
+import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+import type { FontId } from "@/lib/handwriting-fonts";
 import dynamic from "next/dynamic";
-import PdfViewer from "@/components/pdf/PdfViewer";
+import PdfViewer, { type PendingSelection } from "@/components/pdf/PdfViewer";
 import SplitLayout from "@/components/workspace/SplitLayout";
 
 // Excalidraw touches `window`, so it only loads in the browser.
@@ -19,6 +27,10 @@ export default function BoardPage() {
   const [board, setBoard] = useState<Board | null>(null);
   const [pdf, setPdf] = useState<Blob | null>(null);
   const [missing, setMissing] = useState(false);
+  const [highlights, setHighlights] = useState<Highlight[]>([]);
+  const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const handleApi = useCallback((a: ExcalidrawImperativeAPI) => setApi(a), []);
 
   useEffect(() => {
     (async () => {
@@ -30,12 +42,40 @@ export default function BoardPage() {
       }
       setBoard((await updateBoard(id, { lastOpenedAt: Date.now() })) ?? b);
       setPdf(blob);
+      setHighlights(await listHighlights(id));
     })();
   }, [id]);
 
   function save(patch: Partial<Board>) {
     setBoard((b) => (b ? { ...b, ...patch } : b));
     updateBoard(id, patch);
+  }
+
+  async function exportToNotes(sel: PendingSelection, color: string, font: FontId) {
+    if (!api) {
+      setNotice("The notes aren't ready yet. Try again in a moment.");
+      return;
+    }
+    const { addHandwrittenNote } = await import("@/components/notes/handwritten");
+    const created: Highlight[] = sel.pages.map((p) => ({
+      id: crypto.randomUUID(),
+      boardId: id,
+      page: p.page,
+      rects: p.rects,
+      color,
+      text: sel.text,
+      font,
+    }));
+    await Promise.all(created.map(saveHighlight));
+    setHighlights((prev) => [...prev, ...created]);
+    try {
+      await addHandwrittenNote(api, { text: sel.text, font, color });
+    } catch (e) {
+      console.error("addHandwrittenNote failed", e);
+      setNotice("Couldn't add the note to the board. Please try again.");
+      return;
+    }
+    if (!board?.paneVisibility.notes) save({ paneVisibility: { pdf: true, notes: true } });
   }
 
   function toggle(key: keyof PaneVisibility) {
@@ -77,6 +117,14 @@ export default function BoardPage() {
           ))}
         </div>
       </header>
+      {notice && (
+        <p role="status" className="bg-amber-100 px-4 py-1 text-sm text-amber-900">
+          {notice}{" "}
+          <button onClick={() => setNotice(null)} className="underline">
+            Dismiss
+          </button>
+        </p>
+      )}
       <div className="min-h-0 flex-1">
         <SplitLayout
           ratio={board.dividerRatio}
@@ -86,10 +134,12 @@ export default function BoardPage() {
           pdf={
             <PdfViewer
               blob={pdf}
+              highlights={highlights}
+              onExport={exportToNotes}
               onLoaded={(pageCount) => updateBoard(id, { pageCount })}
             />
           }
-          notes={<NotesCanvas boardId={id} />}
+          notes={<NotesCanvas boardId={id} onApi={handleApi} />}
         />
       </div>
     </div>

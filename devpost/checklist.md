@@ -31,7 +31,7 @@ Execution plan: slices 1-3 run serially. After slice 3, slices 4, 5 and 6 run as
   Learner check: Drag the divider, close the PDF pane and the notes pane, draw something, reload and confirm it all comes back.
   Commit: `Add split workspace with persistent Excalidraw notes`
 
-- [ ] **3. Highlight text and export it as a handwritten note (the kernel)**
+- [x] **3. Highlight text and export it as a handwritten note (the kernel)**
   Becomes usable: Select text in the PDF, a popout offers color, font and Export to board; the exact words appear in the notes in a handwriting font at the next free spot; the highlight stays on the PDF; the note can be edited, moved, resized and deleted.
   Why now: This is `scope.md > The Unique Kernel`. It also carries the biggest technical risk (custom handwriting fonts in Excalidraw), so it comes right after the notes pane exists.
   PRD ref: `prd.md > Highlight to handwritten note`
@@ -105,3 +105,5 @@ Activity mode: [live app and editor, explicit static fallback, focused alternati
 ## Revisions
 - pdf.js 6.x needs a newer JavaScript feature than the browser used for testing had (`Map.getOrInsertComputed`) — switched the viewer to pdf.js's `legacy` build and worker (`pdfjs-dist/legacy/build/...`); spec's stack row for pdf.js stays the same library, different entry point.
 - The scaffold's `cacheComponents` and `partialPrefetching` options were removed from `next.config.ts` — not needed for a client-side app and they add rules about dynamic data; `turbopack.root` set because a stray `package-lock.json` exists in the home folder.
+- Excalidraw's text tool only offers its built-in font families (Virgil, Excalifont, Comic Shanns, etc.) and has no custom font registration, so handwritten notes use the spec's fallback: an image rendered in the chosen Google handwriting font (Caveat, Kalam, Patrick Hand, Indie Flower) with the exact text, font and color kept in the element's `customData`. A "Edit handwritten note" button appears when one is selected, instead of double-click, because Excalidraw has no double-click hook.
+- next/font's generated "Fallback" font face can fail to load on machines without that system font and rejected `document.fonts.load`, so note rendering now loads only the primary family and treats a failed load as non-fatal.
