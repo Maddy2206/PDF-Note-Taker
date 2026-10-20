@@ -182,6 +182,8 @@ export default function BoardPage() {
               onZoomChange={(pdfZoom) => updateBoard(id, { pdfZoom })}
               onExport={exportToNotes}
               onImportDiagram={importDiagram}
+              initialPage={board.lastPage}
+              onPageChange={(lastPage) => updateBoard(id, { lastPage })}
               onLoaded={(pageCount) => updateBoard(id, { pageCount })}
             />
           }
