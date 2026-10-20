@@ -114,7 +114,7 @@ export default function DashboardPage() {
             New board
           </button>
         </div>
-        <div className="max-w-[1160px] px-[clamp(16px,4vw,40px)] pb-[72px] pt-7">
+        <div className="px-[clamp(16px,4vw,40px)] pb-[72px] pt-7">
           <div className="flex flex-wrap items-end gap-x-4 gap-y-3.5 border-b-2 border-[var(--color-divider)] pb-[18px]">
             <div className="mr-auto min-w-0">
               <div className="mb-2 text-xs uppercase tracking-[0.08em] text-[var(--color-accent-700)]">Library</div>
@@ -166,7 +166,7 @@ export default function DashboardPage() {
             {boards === null ? (
               <p className="text-[var(--color-neutral-600,#7d7979)]">Loading...</p>
             ) : (
-              <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(min(240px,100%),1fr))" }}>
+              <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(min(300px,100%),1fr))" }}>
                 {!query && (
                   <button
                     onClick={() => setCreating(true)}

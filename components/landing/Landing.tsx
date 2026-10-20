@@ -18,7 +18,7 @@ function css(s: string): CSSProperties {
 const MUTED = (pct: number) => `color-mix(in srgb,var(--color-text) ${pct}%,transparent)`;
 const SERIF = "var(--font-serif)";
 const PAPER = "#fbf9f9";
-const WRAP = "max-width:1240px;margin:0 auto;padding:0 clamp(16px,4vw,48px)";
+const WRAP = "max-width:1480px;margin:0 auto;padding:0 clamp(16px,4vw,48px)";
 const DOTS = (size: number, shade = 400) =>
   `background-color:var(--color-bg);background-image:radial-gradient(circle,var(--color-neutral-${shade}) 1px,transparent 1.2px);background-size:${size}px ${size}px`;
 
@@ -217,8 +217,8 @@ export default function Landing() {
       </nav>
 
       <div style={css(WRAP)}>
-        <section style={css("padding:clamp(48px,8vw,104px) 0 40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:24px 64px;align-items:end")}>
-          <h1 style={css("font-size:clamp(42px,6.4vw,86px);line-height:1.02;letter-spacing:-0.03em;margin:0 0 0 -0.05em")}>
+        <section style={css("padding:clamp(48px,8vw,104px) 0 40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:32px 64px;align-items:end")}>
+          <h1 style={css("font-size:clamp(38px,5.2vw,76px);line-height:1.04;letter-spacing:-0.03em;margin:0 0 0 -0.05em;white-space:nowrap")}>
             <span style={{ display: "block" }}>Read the PDF.</span>
             <span style={{ display: "block" }}>Build the notes</span>
             <span style={{ display: "block" }}>right beside it.</span>
@@ -452,7 +452,7 @@ export default function Landing() {
 
       <hr className="hr" style={{ margin: 0 }} />
 
-      <section id="how" style={css("max-width:1240px;margin:0 auto;padding:clamp(48px,7vw,88px) clamp(16px,4vw,48px)")}>
+      <section id="how" style={css("max-width:1480px;margin:0 auto;padding:clamp(48px,7vw,88px) clamp(16px,4vw,48px)")}>
         <div style={css("display:flex;flex-direction:column;gap:12px;margin-bottom:36px")}>
           <Kicker>How it works</Kicker>
           <h2 style={css("font-size:clamp(30px,3.6vw,46px);margin:0;letter-spacing:-0.02em")}>Three steps per chapter.</h2>
@@ -475,7 +475,7 @@ export default function Landing() {
 
       <hr className="hr" style={{ margin: 0 }} />
 
-      <section style={css("max-width:1240px;margin:0 auto;padding:clamp(48px,7vw,88px) clamp(16px,4vw,48px)")}>
+      <section style={css("max-width:1480px;margin:0 auto;padding:clamp(48px,7vw,88px) clamp(16px,4vw,48px)")}>
         <div style={css("display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:32px 64px")}>
           <div style={css("display:flex;flex-direction:column;gap:12px")}>
             <Kicker>Why not two apps</Kicker>
@@ -495,7 +495,7 @@ export default function Landing() {
       </section>
 
       <section style={{ background: "var(--color-accent)", color: "var(--color-bg)" }}>
-        <div style={css("max-width:1240px;margin:0 auto;padding:clamp(56px,8vw,104px) clamp(16px,4vw,48px);display:flex;flex-direction:column;gap:32px;align-items:flex-start")}>
+        <div style={css("max-width:1480px;margin:0 auto;padding:clamp(56px,8vw,104px) clamp(16px,4vw,48px);display:flex;flex-direction:column;gap:32px;align-items:flex-start")}>
           <h2 style={css("font-size:clamp(36px,5vw,68px);line-height:1.04;margin:0 0 0 -0.04em;letter-spacing:-0.025em")}>
             <span style={{ display: "block" }}>Your next chapter,</span>
             <span style={{ display: "block" }}>one workspace.</span>
@@ -507,7 +507,7 @@ export default function Landing() {
         </div>
       </section>
 
-      <footer style={css(`max-width:1240px;margin:0 auto;padding:28px clamp(16px,4vw,48px);display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;font-size:13px;color:${MUTED(70)}`)}>
+      <footer style={css(`max-width:1480px;margin:0 auto;padding:28px clamp(16px,4vw,48px);display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;font-size:13px;color:${MUTED(70)}`)}>
         <span style={css("display:flex;align-items:center;gap:8px")}>
           <span style={css("width:8px;height:8px;background:var(--color-accent)")} />
           Margin — a study workspace for PDFs

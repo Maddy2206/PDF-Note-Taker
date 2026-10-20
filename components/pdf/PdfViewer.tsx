@@ -123,6 +123,67 @@ function PageView({
   );
 }
 
+/** A small lazily rendered preview of one page, for the thumbnail strip. */
+function Thumb({
+  pdf,
+  pageNumber,
+  base,
+  active,
+  onPick,
+}: {
+  pdf: PDFDocumentProxy;
+  pageNumber: number;
+  base: { w: number; h: number };
+  active: boolean;
+  onPick: () => void;
+}) {
+  const wrapRef = useRef<HTMLButtonElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const width = 104;
+  const height = (base.h / base.w) * width;
+
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    let done = false;
+    const observer = new IntersectionObserver(
+      async (entries) => {
+        if (!entries[0].isIntersecting || done) return;
+        done = true;
+        const page = await pdf.getPage(pageNumber);
+        const canvas = canvasRef.current;
+        const ctx = canvas?.getContext("2d");
+        if (!canvas || !ctx) return;
+        const dpr = window.devicePixelRatio || 1;
+        const viewport = page.getViewport({ scale: (width / base.w) * dpr });
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvas, canvasContext: ctx, viewport }).promise;
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(wrap);
+    return () => observer.disconnect();
+  }, [pdf, pageNumber, base.w]);
+
+  return (
+    <button
+      ref={wrapRef}
+      onClick={onPick}
+      aria-label={`Go to page ${pageNumber}`}
+      aria-current={active ? "page" : undefined}
+      className="mx-auto mb-3 flex flex-col items-center gap-1 p-1 hover:bg-zinc-100 aria-[current=page]:bg-indigo-100"
+    >
+      <canvas
+        ref={canvasRef}
+        className="bg-white shadow"
+        style={{ width, height }}
+      />
+      <span className="text-xs tabular-nums">{pageNumber}</span>
+    </button>
+  );
+}
+
 export interface PendingSelection {
   text: string;
   pages: { page: number; rects: HighlightRect[] }[];
@@ -240,6 +301,9 @@ export default function PdfViewer({
   const anchor = useRef<{ page: number; frac: number } | null>(null);
   const resumeCancelled = useRef(false);
   const scale = zoom ?? fitScale;
+  const [current, setCurrent] = useState(initialPage);
+  const [pageDraft, setPageDraft] = useState<string | null>(null);
+  const [showThumbs, setShowThumbs] = useState(true);
   const [pending, setPending] = useState<{ sel: PendingSelection; x: number; y: number } | null>(null);
 
   // Every page's size at scale 1: gives "fit to width" and keeps page heights right
@@ -329,6 +393,7 @@ export default function PdfViewer({
       if (target) {
         el.scrollTop = target.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop - 16;
       }
+      updateCurrent();
     };
     const timers = [0, 100, 250, 500, 900, 1500].map((ms) => setTimeout(goto, ms));
     return () => {
@@ -364,6 +429,7 @@ export default function PdfViewer({
         raf = requestAnimationFrame(() => {
           raf = 0;
           captureAnchor();
+          updateCurrent();
         });
       }
       if (!restored.current) return;
@@ -378,6 +444,37 @@ export default function PdfViewer({
     };
     // The scroll container only exists once the page sizes are known.
   }, [pdf, sizes]);
+
+  function updateCurrent() {
+    const el = containerRef.current;
+    if (!el) return;
+    const box = el.getBoundingClientRect();
+    const rects = Array.from(el.querySelectorAll<HTMLElement>("[data-page]")).map((n) => {
+      const r = n.getBoundingClientRect();
+      return { page: Number(n.dataset.page), top: r.top, bottom: r.bottom };
+    });
+    const page = mostVisiblePage(rects, box.top, box.bottom);
+    if (page) setCurrent(page);
+  }
+
+  function goToPage(n: number) {
+    const el = containerRef.current;
+    if (!el || !pdf) return;
+    const page = Math.min(Math.max(Math.round(n) || 1, 1), pdf.numPages);
+    const target = el.querySelector<HTMLElement>(`[data-page="${page}"]`);
+    if (!target) return;
+    resumeCancelled.current = true;
+    el.scrollTop =
+      target.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop - 16;
+    setCurrent(page);
+  }
+
+  function fitPage() {
+    const el = containerRef.current;
+    const b = sizes?.[current - 1] ?? sizes?.[0];
+    if (!el || !b) return;
+    changeZoom(Math.round(((el.clientHeight - 32) / b.h) * 20) / 20);
+  }
 
   function changeZoom(next: number | null) {
     resumeCancelled.current = true;
@@ -434,29 +531,64 @@ export default function PdfViewer({
 
   return (
     <div className="flex h-full flex-col">
-    <div className="flex shrink-0 flex-wrap items-center gap-x-1 gap-y-1.5 border-b border-zinc-200 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+    <div className="flex h-11 shrink-0 items-center gap-1 border-b border-[var(--color-divider)] bg-[var(--color-bg)] px-2 text-sm">
       <button
-        onClick={() => changeZoom(scale - ZOOM_STEP)}
-        aria-label="Zoom out"
-        className="rounded px-2 py-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+        onClick={() => setShowThumbs((v) => !v)}
+        aria-label="Toggle page thumbnails"
+        aria-pressed={showThumbs}
+        title="Thumbnails"
+        className="btn btn-icon aria-pressed:bg-[var(--color-accent-100)]"
       >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+          <rect x="3" y="3" width="18" height="18" />
+          <path d="M9 3v18" />
+        </svg>
+      </button>
+      <span className="mx-1 h-5 w-px bg-[var(--color-divider)]" aria-hidden />
+      <input
+        aria-label="Page number"
+        value={pageDraft ?? String(current)}
+        inputMode="numeric"
+        onFocus={(e) => e.currentTarget.select()}
+        onChange={(e) => setPageDraft(e.target.value.replace(/\D/g, ""))}
+        onBlur={() => setPageDraft(null)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            goToPage(Number(pageDraft ?? current));
+            setPageDraft(null);
+            e.currentTarget.blur();
+          }
+          if (e.key === "Escape") {
+            setPageDraft(null);
+            e.currentTarget.blur();
+          }
+        }}
+        className="h-7 w-10 border border-[var(--color-divider)] bg-transparent text-center tabular-nums"
+      />
+      <span className="tabular-nums text-[color-mix(in_srgb,var(--color-text)_70%,transparent)]">
+        / {pdf.numPages}
+      </span>
+      <span className="mx-1 h-5 w-px bg-[var(--color-divider)]" aria-hidden />
+      <button onClick={() => changeZoom(scale - ZOOM_STEP)} aria-label="Zoom out" className="btn btn-icon">
         &minus;
       </button>
       <span className="w-12 text-center tabular-nums">{Math.round(scale * 100)}%</span>
-      <button
-        onClick={() => changeZoom(scale + ZOOM_STEP)}
-        aria-label="Zoom in"
-        className="rounded px-2 py-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-      >
+      <button onClick={() => changeZoom(scale + ZOOM_STEP)} aria-label="Zoom in" className="btn btn-icon">
         +
       </button>
+      <span className="mx-1 h-5 w-px bg-[var(--color-divider)]" aria-hidden />
       <button
         onClick={() => changeZoom(null)}
         aria-pressed={zoom === null}
-        className="ml-1 rounded px-2 py-0.5 hover:bg-zinc-100 aria-pressed:bg-indigo-600 aria-pressed:text-white dark:hover:bg-zinc-800"
+        className="btn aria-pressed:bg-[var(--color-accent)] aria-pressed:text-[var(--color-bg)]"
       >
         Fit width
       </button>
+      <button onClick={fitPage} className="btn">
+        Fit page
+      </button>
+    </div>
+    <div className="flex shrink-0 flex-wrap items-center gap-x-1 gap-y-1.5 border-b border-[var(--color-divider)] bg-[var(--color-bg)] px-2 py-1.5 text-sm">
       {onImportDiagram && (
         <>
           <button
@@ -466,7 +598,7 @@ export default function PdfViewer({
               setClipMode((v) => !v);
             }}
             aria-pressed={clipMode}
-            className="ml-3 rounded border border-indigo-300 px-2 py-0.5 font-medium text-indigo-700 hover:bg-indigo-50 aria-pressed:border-indigo-600 aria-pressed:bg-indigo-600 aria-pressed:text-white dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-zinc-800"
+            className="rounded border border-indigo-300 px-2 py-0.5 font-medium text-indigo-700 hover:bg-indigo-50 aria-pressed:border-indigo-600 aria-pressed:bg-indigo-600 aria-pressed:text-white dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-zinc-800"
           >
             Clip diagram
           </button>
@@ -502,11 +634,29 @@ export default function PdfViewer({
         work. You can still clip diagrams into your notes.
       </p>
     )}
+    <div className="flex min-h-0 flex-1">
+    {showThumbs && (
+      <nav
+        aria-label="Page thumbnails"
+        className="w-32 flex-none overflow-y-auto border-r border-[var(--color-divider)] bg-[var(--color-bg)] pt-3"
+      >
+        {Array.from({ length: pdf.numPages }, (_, i) => (
+          <Thumb
+            key={i}
+            pdf={pdf}
+            pageNumber={i + 1}
+            base={sizes[i] ?? sizes[0]}
+            active={current === i + 1}
+            onPick={() => goToPage(i + 1)}
+          />
+        ))}
+      </nav>
+    )}
     <div
       ref={containerRef}
       onMouseUp={handleSelect}
       onScroll={() => pending && setPending(null)}
-      className="min-h-0 flex-1 overflow-auto bg-zinc-200 p-4 dark:bg-zinc-800"
+      className="min-h-0 min-w-0 flex-1 overflow-auto bg-zinc-200 p-4 dark:bg-zinc-800"
     >
       {Array.from({ length: pdf.numPages }, (_, i) => (
         <PageView
@@ -533,6 +683,7 @@ export default function PdfViewer({
           }}
         />
       )}
+    </div>
     </div>
     </div>
   );
