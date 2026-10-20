@@ -16,6 +16,8 @@ export interface Board {
   dividerRatio: number;
   paneVisibility: PaneVisibility;
   paper: Paper;
+  /** PDF zoom factor; null/undefined means fit to the pane width. */
+  pdfZoom?: number | null;
 }
 
 export interface HighlightRect {

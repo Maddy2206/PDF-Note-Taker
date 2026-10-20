@@ -46,6 +46,33 @@ export default function BoardPage() {
     })();
   }, [id]);
 
+  // Ctrl+Z / Ctrl+Y undo and redo the notes even when focus is on the PDF side.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const mod = e.ctrlKey || e.metaKey;
+      const k = e.key.toLowerCase();
+      if (!mod || e.altKey || (k !== "z" && k !== "y")) return;
+      const t = e.target as HTMLElement | null;
+      if (t?.closest(".excalidraw, input, textarea, select, [contenteditable]")) return;
+      const canvas = document.querySelector(".excalidraw");
+      if (!canvas) return;
+      e.preventDefault();
+      canvas.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: e.key,
+          code: e.code,
+          ctrlKey: e.ctrlKey,
+          metaKey: e.metaKey,
+          shiftKey: e.shiftKey,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   function save(patch: Partial<Board>) {
     setBoard((b) => (b ? { ...b, ...patch } : b));
     updateBoard(id, patch);
@@ -135,6 +162,8 @@ export default function BoardPage() {
             <PdfViewer
               blob={pdf}
               highlights={highlights}
+              initialZoom={board.pdfZoom ?? null}
+              onZoomChange={(pdfZoom) => updateBoard(id, { pdfZoom })}
               onExport={exportToNotes}
               onLoaded={(pageCount) => updateBoard(id, { pageCount })}
             />

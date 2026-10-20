@@ -24,9 +24,11 @@ export function getFont(id: string): HandwritingFont {
   return HANDWRITING_FONTS.find((f) => f.id === id) ?? HANDWRITING_FONTS[0];
 }
 
+/** Used both as the note's ink color and as the marker color over the PDF text. */
 export const HIGHLIGHT_COLORS = [
-  { id: "yellow", value: "#fde047", label: "Yellow" },
-  { id: "green", value: "#86efac", label: "Green" },
-  { id: "pink", value: "#f9a8d4", label: "Pink" },
-  { id: "blue", value: "#93c5fd", label: "Blue" },
+  { id: "blue", value: "#2563eb", label: "Blue" },
+  { id: "red", value: "#dc2626", label: "Red" },
+  { id: "green", value: "#16a34a", label: "Green" },
+  { id: "purple", value: "#9333ea", label: "Purple" },
+  { id: "orange", value: "#ea580c", label: "Orange" },
 ];

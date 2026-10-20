@@ -5,7 +5,6 @@ const LINE_HEIGHT = 1.35;
 const MAX_WIDTH = 420;
 const PAD = 8;
 const PIXEL_RATIO = 2;
-const INK = "#1e293b";
 
 export interface RenderedNote {
   dataURL: string;
@@ -32,7 +31,7 @@ function wrap(ctx: CanvasRenderingContext2D, text: string): string[] {
   return lines;
 }
 
-/** Draws the exact text in a handwriting font, with a marker band in the highlight color. */
+/** Draws the exact text in a handwriting font, in the chosen color. */
 export async function renderNoteImage(
   text: string,
   fontId: string,
@@ -66,12 +65,7 @@ export async function renderNoteImage(
 
   lines.forEach((line, i) => {
     const y = PAD + i * lineH;
-    const w = ctx.measureText(line).width;
-    ctx.globalAlpha = 0.55;
     ctx.fillStyle = color;
-    ctx.fillRect(PAD - 3, y + lineH * 0.18, w + 6, lineH * 0.7);
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = INK;
     ctx.fillText(line, PAD, y + lineH * 0.72);
   });
 

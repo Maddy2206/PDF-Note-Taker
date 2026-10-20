@@ -1,4 +1,4 @@
-import { convertToExcalidrawElements } from "@excalidraw/excalidraw";
+import { CaptureUpdateAction, convertToExcalidrawElements } from "@excalidraw/excalidraw";
 import type {
   BinaryFileData,
   ExcalidrawImperativeAPI,
@@ -48,7 +48,10 @@ export async function addHandwrittenNote(
     },
   ]);
   const note = { ...img, customData: { kind: "handwritten-note", ...meta } } as ExcalidrawElement;
-  api.updateScene({ elements: [...existing, note] as never });
+  api.updateScene({
+    elements: [...existing, note] as never,
+    captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+  });
   api.scrollToContent(note, { animate: true, fitToViewport: false });
   return note;
 }
@@ -75,5 +78,8 @@ export async function updateHandwrittenNote(
         } as ExcalidrawElement)
       : el,
   );
-  api.updateScene({ elements: elements as never });
+  api.updateScene({
+    elements: elements as never,
+    captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+  });
 }
