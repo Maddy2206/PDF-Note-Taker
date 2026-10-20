@@ -10,7 +10,7 @@ import {
   saveHighlight,
   updateBoard,
 } from "@/lib/storage";
-import type { Board, Highlight, PaneVisibility } from "@/lib/types";
+import type { Board, Highlight } from "@/lib/types";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import type { FontId } from "@/lib/handwriting-fonts";
 import dynamic from "next/dynamic";
@@ -151,13 +151,6 @@ export default function BoardPage() {
     }
   }
 
-  function toggle(key: keyof PaneVisibility) {
-    if (!board) return;
-    const next = { ...board.paneVisibility, [key]: !board.paneVisibility[key] };
-    if (!next.pdf && !next.notes) return; // keep at least one pane open
-    save({ paneVisibility: next });
-  }
-
   if (storageError) {
     return (
       <main className="p-6">
@@ -184,27 +177,42 @@ export default function BoardPage() {
 
   return (
     <div className="flex h-screen flex-col">
-      <header className="flex items-center gap-3 border-b-2 border-zinc-900/40 px-4 py-2 dark:border-zinc-800">
-        <Link href="/dashboard" className="text-sm text-indigo-600 hover:underline">
-          &larr; Boards
+      <header className="flex h-[52px] flex-none items-center gap-2.5 border-b-2 border-[var(--color-divider)] px-2.5">
+        <Link href="/dashboard" aria-label="Back to boards" className="btn btn-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5M11 6l-6 6 6 6" />
+          </svg>
         </Link>
-        <h1 className="truncate font-medium">{board.name}</h1>
-        <div className="ml-auto flex items-center gap-2 text-sm">
-          <button
-            onClick={downloadPdf}
-            disabled={!api || downloading}
-            className="rounded-md bg-indigo-600 px-3 py-1 font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
-          >
-            {downloading ? "Preparing..." : "Download PDF"}
-          </button>
-          {(["pdf", "notes"] as const).map((key) => (
+        <div className="mr-auto flex min-w-0 flex-col">
+          <span className="whitespace-nowrap text-[11px] uppercase tracking-[0.08em] text-[var(--color-accent-700)]">
+            {board.paper === "lined" ? "Lined notebook" : "Blank notebook"}
+          </span>
+          <span className="truncate text-[15px] font-extrabold">{board.name}</span>
+        </div>
+        <button
+          onClick={downloadPdf}
+          disabled={!api || downloading}
+          className="btn btn-secondary"
+        >
+          {downloading ? "Preparing..." : "Download PDF"}
+        </button>
+        <div className="seg" role="group" aria-label="Layout">
+          {(
+            [
+              ["PDF", { pdf: true, notes: false }],
+              ["Split", { pdf: true, notes: true }],
+              ["Notes", { pdf: false, notes: true }],
+            ] as const
+          ).map(([label, v]) => (
             <button
-              key={key}
-              onClick={() => toggle(key)}
-              aria-pressed={board.paneVisibility[key]}
-              className="rounded-md border border-zinc-300 px-2.5 py-1 aria-pressed:bg-indigo-600 aria-pressed:text-white dark:border-zinc-700"
+              key={label}
+              className="seg-opt"
+              aria-pressed={
+                board.paneVisibility.pdf === v.pdf && board.paneVisibility.notes === v.notes
+              }
+              onClick={() => save({ paneVisibility: { ...v } })}
             >
-              {key === "pdf" ? "PDF" : "Notes"}
+              {label}
             </button>
           ))}
         </div>
