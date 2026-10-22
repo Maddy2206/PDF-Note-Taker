@@ -107,6 +107,12 @@ Third round of feedback (learner confirmed the notebook pages work), implemented
 - [x] Importing a diagram (or exporting a note) no longer shakes or reorients the notes pane: the view is no longer re-centered or animated (new `components/notes/reveal.ts` only adjusts vertical scroll when the item is out of view), the page background now updates in the same frame as the canvas, and Excalidraw is given a stable `initialData` so re-renders (such as saving a new page count) can't reset it
 - [ ] Re-checked by the learner in the browser
 
+Fourth round (learner request): **multiple PDFs per board**, implemented:
+- [x] A board holds many PDFs and one shared notebook; PDF tabs above the PDF pane (add with "+ Add PDF", rename by double-click, remove with x; a board keeps at least one). Each PDF remembers its own page and zoom, and highlights stay with their PDF
+- [x] Create board accepts several PDFs at once; board cards show the PDF count
+- [x] Storage moved to database version 2 (`documents` and `pdfBlobs` stores) with an automatic migration of one-PDF boards; verified in Chrome with a seeded version 1 database
+- [ ] Re-checked by the learner in the browser
+
 ## Code Tour and App Map
 
 - [ ] Learning activity complete — guided route, focused alternative, prior practice connected, or brief recap

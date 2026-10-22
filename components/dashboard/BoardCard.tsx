@@ -127,9 +127,7 @@ export default function BoardCard({
             </div>
             <div className="flex flex-col gap-1.5 px-3.5 pb-3.5 pt-3">
               <div className="card-kicker" style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-accent-700)" }}>
-                {board.pageCount > 0
-                  ? `Page ${Math.min(board.lastPage, board.pageCount)} of ${board.pageCount}`
-                  : "PDF"}
+                {`${board.docCount ?? 1} ${(board.docCount ?? 1) === 1 ? "PDF" : "PDFs"}`}
               </div>
               <div className="truncate pr-8 text-[17px] font-extrabold leading-tight">
                 {board.name}
@@ -202,7 +200,7 @@ export default function BoardCard({
           <div className="w-full max-w-sm rounded-xl bg-white p-5 text-black shadow-xl">
             <h2 className="mb-2 text-lg font-semibold">Delete this board?</h2>
             <p className="mb-4 text-sm">
-              &ldquo;{board.name}&rdquo; and its PDF, notes and highlights will be deleted. This
+              &ldquo;{board.name}&rdquo; with all its PDFs, notes and highlights will be deleted. This
               can&apos;t be undone.
             </p>
             <div className="flex justify-end gap-2 text-sm">

@@ -4,19 +4,24 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
+  addDocs,
   getBoard,
-  getPdf,
+  getDocBlob,
+  listDocs,
   listHighlights,
+  removeDoc,
   saveHighlight,
   updateBoard,
+  updateDoc,
 } from "@/lib/storage";
 import { PAPERS, paperColorOf } from "@/lib/paper";
 import PageStyleMenu from "@/components/notes/PageStyleMenu";
-import type { Board, Highlight } from "@/lib/types";
+import type { Board, Highlight, PdfDoc } from "@/lib/types";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import type { FontId } from "@/lib/handwriting-fonts";
 import dynamic from "next/dynamic";
 import PdfViewer, { type PendingSelection } from "@/components/pdf/PdfViewer";
+import PdfTabs from "@/components/pdf/PdfTabs";
 import SplitLayout from "@/components/workspace/SplitLayout";
 
 // Excalidraw touches `window`, so it only loads in the browser.
@@ -27,7 +32,9 @@ const NotesCanvas = dynamic(() => import("@/components/notes/NotesCanvas"), {
 export default function BoardPage() {
   const { id } = useParams<{ id: string }>();
   const [board, setBoard] = useState<Board | null>(null);
-  const [pdf, setPdf] = useState<Blob | null>(null);
+  const [loaded, setLoaded] = useState<{ docId: string; blob: Blob } | null>(null);
+  const [docs, setDocs] = useState<PdfDoc[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
   const [storageError, setStorageError] = useState(false);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
@@ -46,16 +53,33 @@ export default function BoardPage() {
     })();
     async function loadBoard() {
       const b = await getBoard(id);
-      const blob = await getPdf(id);
-      if (!b || !blob) {
+      const list = b ? await listDocs(id) : [];
+      if (!b || list.length === 0) {
         setMissing(true);
         return;
       }
       setBoard((await updateBoard(id, { lastOpenedAt: Date.now() })) ?? b);
-      setPdf(blob);
+      setDocs(list);
+      setActiveId(list.find((d) => d.id === b.activeDocId)?.id ?? list[0].id);
       setHighlights(await listHighlights(id));
     }
   }, [id]);
+
+  // Load the file of the PDF tab that is open.
+  useEffect(() => {
+    if (!activeId) return;
+    let cancelled = false;
+    getDocBlob(activeId)
+      .then((blob) => {
+        if (cancelled) return;
+        if (blob) setLoaded({ docId: activeId, blob });
+        else setNotice("Couldn't find the file for this PDF.");
+      })
+      .catch(() => !cancelled && setStorageError(true));
+    return () => {
+      cancelled = true;
+    };
+  }, [activeId]);
 
   // Ctrl+Z / Ctrl+Y undo and redo the notes even when focus is on the PDF side.
   useEffect(() => {
@@ -89,6 +113,43 @@ export default function BoardPage() {
     updateBoard(id, patch);
   }
 
+  // the file shown is only used while it belongs to the open tab
+  const pdf = loaded && loaded.docId === activeId ? loaded.blob : null;
+  const activeDoc = docs.find((d) => d.id === activeId) ?? null;
+
+  function patchDoc(docId: string, patch: Partial<PdfDoc>) {
+    setDocs((ds) => ds.map((d) => (d.id === docId ? { ...d, ...patch } : d)));
+    updateDoc(docId, patch);
+  }
+
+  function selectDoc(docId: string) {
+    setActiveId(docId);
+    save({ activeDocId: docId });
+  }
+
+  async function addPdfs(files: File[]) {
+    try {
+      const added = await addDocs(id, files);
+      setDocs((ds) => [...ds, ...added]);
+      setBoard((b) => (b ? { ...b, docCount: (b.docCount ?? 1) + added.length } : b));
+      selectDoc(added[0].id);
+    } catch {
+      setNotice("Couldn't save the PDFs. Browser storage may be full or blocked.");
+    }
+  }
+
+  async function removePdf(docId: string) {
+    if (!(await removeDoc(docId))) {
+      setNotice("A board needs at least one PDF.");
+      return;
+    }
+    const rest = docs.filter((d) => d.id !== docId);
+    setDocs(rest);
+    setHighlights((hs) => hs.filter((h) => h.docId !== docId));
+    setBoard((b) => (b ? { ...b, docCount: rest.length } : b));
+    if (activeId === docId) selectDoc(rest[0].id);
+  }
+
   async function exportToNotes(sel: PendingSelection, color: string, font: FontId) {
     if (!api) {
       setNotice("The notes aren't ready yet. Try again in a moment.");
@@ -98,6 +159,7 @@ export default function BoardPage() {
     const created: Highlight[] = sel.pages.map((p) => ({
       id: crypto.randomUUID(),
       boardId: id,
+      docId: activeId ?? id,
       page: p.page,
       rects: p.rects,
       color,
@@ -176,7 +238,7 @@ export default function BoardPage() {
       </main>
     );
   }
-  if (!board || !pdf) return <p className="p-6 text-zinc-500">Loading...</p>;
+  if (!board || !activeDoc) return <p className="p-6 text-zinc-500">Loading...</p>;
 
   return (
     <div className="flex h-screen flex-col">
@@ -240,17 +302,35 @@ export default function BoardPage() {
           onRatioChange={(dividerRatio) => save({ dividerRatio })}
           onVisibilityChange={(paneVisibility) => save({ paneVisibility })}
           pdf={
-            <PdfViewer
-              blob={pdf}
-              highlights={highlights}
-              initialZoom={board.pdfZoom ?? null}
-              onZoomChange={(pdfZoom) => updateBoard(id, { pdfZoom })}
-              onExport={exportToNotes}
-              onImportDiagram={importDiagram}
-              initialPage={board.lastPage}
-              onPageChange={(lastPage) => updateBoard(id, { lastPage })}
-              onLoaded={(pageCount) => updateBoard(id, { pageCount })}
-            />
+            <div className="flex h-full flex-col">
+              <PdfTabs
+                docs={docs}
+                activeId={activeDoc.id}
+                onSelect={selectDoc}
+                onAdd={addPdfs}
+                onRename={(docId, name) => patchDoc(docId, { name })}
+                onRemove={removePdf}
+                onError={setNotice}
+              />
+              <div className="min-h-0 flex-1">
+                {pdf ? (
+                  <PdfViewer
+                    key={activeDoc.id}
+                    blob={pdf}
+                    highlights={highlights.filter((h) => h.docId === activeDoc.id)}
+                    initialZoom={activeDoc.zoom}
+                    onZoomChange={(zoom) => patchDoc(activeDoc.id, { zoom })}
+                    onExport={exportToNotes}
+                    onImportDiagram={importDiagram}
+                    initialPage={activeDoc.lastPage}
+                    onPageChange={(lastPage) => patchDoc(activeDoc.id, { lastPage })}
+                    onLoaded={(pageCount) => patchDoc(activeDoc.id, { pageCount })}
+                  />
+                ) : (
+                  <p className="p-6 text-zinc-500">Loading PDF...</p>
+                )}
+              </div>
+            </div>
           }
           notes={
             <NotesCanvas

@@ -20,8 +20,24 @@ export interface Board {
   paperColor?: string;
   /** Number of notebook pages in the notes pane (undefined means 1). */
   notePages?: number;
-  /** PDF zoom factor; null/undefined means fit to the pane width. */
+  /** PDF zoom factor; null/undefined means fit to the pane width. (Legacy: now kept per PDF.) */
   pdfZoom?: number | null;
+  /** The PDF tab that was open last (defaults to the first PDF). */
+  activeDocId?: string;
+  /** How many PDFs the board holds (undefined means 1). */
+  docCount?: number;
+}
+
+/** One PDF inside a board. The file itself is stored separately, so listing stays cheap. */
+export interface PdfDoc {
+  id: string;
+  boardId: string;
+  name: string;
+  pageCount: number;
+  lastPage: number;
+  /** Zoom factor; null means fit to the pane width. */
+  zoom: number | null;
+  addedAt: number;
 }
 
 export interface HighlightRect {
@@ -35,6 +51,8 @@ export interface HighlightRect {
 export interface Highlight {
   id: string;
   boardId: string;
+  /** The PDF the highlight belongs to. */
+  docId: string;
   page: number;
   rects: HighlightRect[];
   color: string;
