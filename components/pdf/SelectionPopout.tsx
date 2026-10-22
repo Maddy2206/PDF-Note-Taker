@@ -31,12 +31,12 @@ export default function SelectionPopout({
         left: Math.min(Math.max(x, HALF_WIDTH), window.innerWidth - HALF_WIDTH),
         top: Math.min(y, window.innerHeight - 90),
       }}
-      className="fixed z-40 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-zinc-200 bg-white p-3 text-base shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
+      className="fixed z-40 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-zinc-200 bg-white p-3 text-base text-black shadow-xl"
       role="dialog"
       aria-label="Highlight options"
     >
       <div
-        className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100"
+        className="flex items-center gap-2 text-zinc-900"
         title="Change the color and font in the toolbar above the PDF"
       >
         <span
@@ -59,7 +59,7 @@ export default function SelectionPopout({
         type="button"
         onClick={onDismiss}
         aria-label="Dismiss"
-        className="px-1.5 text-2xl leading-none text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+        className="px-1.5 text-2xl leading-none text-zinc-500 hover:text-zinc-800"
       >
         &times;
       </button>

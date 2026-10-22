@@ -111,7 +111,7 @@ export default function DiagramSelect({
             left: Math.min(Math.max(anchor.x, 110), window.innerWidth - 110),
             top: Math.min(anchor.y, window.innerHeight - 56),
           }}
-          className="fixed z-40 flex -translate-x-1/2 items-center gap-2 rounded-lg border border-zinc-200 bg-white p-2 text-sm shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+          className="fixed z-40 flex -translate-x-1/2 items-center gap-2 rounded-lg border border-zinc-200 bg-white p-2 text-sm text-black shadow-lg"
         >
           <button
             type="button"
@@ -134,7 +134,7 @@ export default function DiagramSelect({
           <button
             type="button"
             onClick={() => setRegion(null)}
-            className="rounded-md px-2 py-1 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="rounded-md px-2 py-1 text-zinc-600 hover:bg-zinc-100"
           >
             Cancel
           </button>

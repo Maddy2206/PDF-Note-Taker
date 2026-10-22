@@ -1,4 +1,4 @@
-export type Paper = "lined" | "blank";
+export type Paper = "lined" | "blank" | "dotted" | "grid";
 
 export interface PaneVisibility {
   pdf: boolean;
@@ -16,6 +16,8 @@ export interface Board {
   dividerRatio: number;
   paneVisibility: PaneVisibility;
   paper: Paper;
+  /** Page color as a hex string; undefined means the original default for the paper. */
+  paperColor?: string;
   /** Number of notebook pages in the notes pane (undefined means 1). */
   notePages?: number;
   /** PDF zoom factor; null/undefined means fit to the pane width. */

@@ -1,7 +1,11 @@
 @import "tailwindcss";
 
+/* The app is light only: `dark:` styles never apply, whatever the system theme is. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Modernist design system, from the "Margin" design project. */
 :root {
+  color-scheme: light;
   --background: #f3f2f2;
   --foreground: #201e1d;
   --color-surface: #eae9e9;

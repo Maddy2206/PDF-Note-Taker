@@ -10,6 +10,8 @@ import {
   saveHighlight,
   updateBoard,
 } from "@/lib/storage";
+import { PAPERS, paperColorOf } from "@/lib/paper";
+import PageStyleMenu from "@/components/notes/PageStyleMenu";
 import type { Board, Highlight } from "@/lib/types";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import type { FontId } from "@/lib/handwriting-fonts";
@@ -139,6 +141,7 @@ export default function BoardPage() {
         elements: api.getSceneElements(),
         files: api.getFiles(),
         paper: board.paper,
+        paperColor: board.paperColor,
         pages: board.notePages ?? 1,
         fileName: board.name,
       });
@@ -185,10 +188,15 @@ export default function BoardPage() {
         </Link>
         <div className="mr-auto flex min-w-0 flex-col">
           <span className="whitespace-nowrap text-[11px] uppercase tracking-[0.08em] text-[var(--color-accent-700)]">
-            {board.paper === "lined" ? "Lined notebook" : "Blank notebook"}
+            {PAPERS.find((x) => x.id === board.paper)?.label} notebook
           </span>
           <span className="truncate text-[15px] font-extrabold">{board.name}</span>
         </div>
+        <PageStyleMenu
+          paper={board.paper}
+          color={paperColorOf(board.paper, board.paperColor)}
+          onChange={(paper, paperColor) => save({ paper, paperColor })}
+        />
         <button
           onClick={downloadPdf}
           disabled={!api || downloading}
@@ -249,6 +257,7 @@ export default function BoardPage() {
               boardId={id}
               onApi={handleApi}
               paper={board.paper}
+              paperColor={board.paperColor}
               notePages={board.notePages}
               onNotePagesChange={(notePages) => save({ notePages })}
             />

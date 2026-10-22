@@ -44,6 +44,7 @@ export async function createBoard(
   name: string,
   file: File,
   paper: Board["paper"] = "lined",
+  paperColor?: string,
 ): Promise<Board> {
   const now = Date.now();
   const board: Board = {
@@ -56,6 +57,7 @@ export async function createBoard(
     dividerRatio: 0.5,
     paneVisibility: { pdf: true, notes: true },
     paper,
+    paperColor,
     notePages: 1,
   };
   const d = await db();

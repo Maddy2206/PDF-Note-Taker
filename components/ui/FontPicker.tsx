@@ -38,7 +38,7 @@ export default function FontPicker({
         aria-expanded={open}
         aria-label={`Handwriting font: ${current.label}`}
         style={{ fontFamily: current.family }}
-        className="flex items-center gap-2 rounded border border-zinc-300 bg-white px-2.5 py-0.5 text-lg leading-tight text-zinc-900 hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
+        className="flex items-center gap-2 border border-[var(--color-divider)] bg-white px-2.5 py-0.5 text-lg leading-tight !text-black hover:bg-zinc-100"
       >
         {current.label}
         <span aria-hidden className="font-sans text-xs text-zinc-500">
@@ -48,7 +48,7 @@ export default function FontPicker({
       {open && (
         <ul
           role="listbox"
-          className="absolute left-0 top-full z-50 mt-1 flex max-h-80 w-60 max-w-[calc(100vw-2rem)] flex-col gap-0.5 overflow-y-auto border border-[var(--color-divider)] bg-[var(--color-bg)] p-1.5 shadow-[var(--shadow-md)]"
+          className="absolute left-0 top-full z-50 mt-1 flex max-h-80 w-60 max-w-[calc(100vw-2rem)] flex-col gap-0.5 overflow-y-auto border border-[var(--color-divider)] bg-white p-1.5 text-black shadow-[var(--shadow-md)]"
         >
           {HANDWRITING_FONTS.map((f) => (
             <li key={f.id} role="option" aria-selected={f.id === value}>
@@ -59,7 +59,7 @@ export default function FontPicker({
                   setOpen(false);
                 }}
                 style={{ fontFamily: f.family }}
-                className="w-full rounded px-3 py-1.5 text-left text-xl leading-tight text-zinc-900 hover:bg-indigo-50 data-[selected=true]:bg-indigo-600 data-[selected=true]:text-white dark:text-zinc-100 dark:hover:bg-zinc-800"
+                className="w-full bg-white px-3 py-1.5 text-left text-xl leading-tight !text-black hover:bg-zinc-100 data-[selected=true]:bg-zinc-200"
                 data-selected={f.id === value}
               >
                 {f.label}

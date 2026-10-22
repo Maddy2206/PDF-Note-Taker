@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Board } from "@/lib/types";
+import { PAPERS, paperColorOf } from "@/lib/paper";
 
 function timeAgo(ts: number) {
   const mins = Math.round((Date.now() - ts) / 60000);
@@ -109,7 +110,8 @@ export default function BoardCard({
               className="dot-grid relative overflow-hidden border-b-2 border-[var(--color-divider)]"
               style={{ aspectRatio: "16 / 10", backgroundSize: "14px 14px" }}
             >
-              <div className="absolute inset-x-[26%] bottom-0 top-8 bg-[#fbf9f9] p-3 shadow-[var(--shadow-md)]">
+              <div className="absolute inset-x-[26%] bottom-0 top-8 p-3 shadow-[var(--shadow-md)]"
+                style={{ background: paperColorOf(board.paper, board.paperColor) }}>
                 <span className="mb-1.5 block h-1.5 w-3/5 bg-[#605d5d]" />
                 {[100, 100, 70, 100, 85].map((w, i) => (
                   <span
@@ -120,7 +122,7 @@ export default function BoardCard({
                 ))}
               </div>
               <span className="tag tag-neutral absolute left-2.5 top-2.5 !px-2 !py-0.5 !text-[10px]">
-                {board.paper === "lined" ? "Lined notes" : "Blank notes"}
+                {PAPERS.find((x) => x.id === board.paper)?.label} notes
               </span>
             </div>
             <div className="flex flex-col gap-1.5 px-3.5 pb-3.5 pt-3">
@@ -158,7 +160,7 @@ export default function BoardCard({
             {menu && (
               <div
                 role="menu"
-                className="absolute right-0 top-9 z-20 flex w-44 flex-col border border-[var(--color-divider)] bg-[var(--color-bg)] p-1 shadow-[var(--shadow-md)]"
+                className="absolute right-0 top-9 z-20 flex w-44 flex-col border border-[var(--color-divider)] bg-white p-1 text-black shadow-[var(--shadow-md)]"
               >
                 <Link role="menuitem" href={`/board/${board.id}`} className={menuItem}>
                   Open
@@ -197,7 +199,7 @@ export default function BoardCard({
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
           onKeyDown={(e) => e.key === "Escape" && !busy && setConfirming(false)}
         >
-          <div className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl dark:bg-zinc-900">
+          <div className="w-full max-w-sm rounded-xl bg-white p-5 text-black shadow-xl">
             <h2 className="mb-2 text-lg font-semibold">Delete this board?</h2>
             <p className="mb-4 text-sm">
               &ldquo;{board.name}&rdquo; and its PDF, notes and highlights will be deleted. This
@@ -208,7 +210,7 @@ export default function BoardCard({
                 autoFocus
                 disabled={busy}
                 onClick={() => setConfirming(false)}
-                className="rounded-md border border-zinc-300 px-3 py-1.5 dark:border-zinc-700"
+                className="rounded-md border border-zinc-300 px-3 py-1.5"
               >
                 Cancel
               </button>

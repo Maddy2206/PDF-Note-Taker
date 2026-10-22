@@ -166,7 +166,7 @@ export default function DashboardPage() {
             {boards === null ? (
               <p className="text-[var(--color-neutral-600,#7d7979)]">Loading...</p>
             ) : (
-              <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(min(300px,100%),1fr))" }}>
+              <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(min(340px,100%),1fr))" }}>
                 {!query && (
                   <button
                     onClick={() => setCreating(true)}

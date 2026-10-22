@@ -1,7 +1,9 @@
 import { convertToExcalidrawElements, exportToCanvas } from "@excalidraw/excalidraw";
 import type { BinaryFiles } from "@excalidraw/excalidraw/types";
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
-import { LINE, MARGIN_LINE_X, PAGE_H, PAGE_W, STRIDE } from "./pages";
+import { PAGE_H, PAGE_W, STRIDE } from "./pages";
+import { drawPaper, paperColorOf } from "./paper";
+import type { Paper } from "./types";
 
 export function sanitizeFileName(name: string): string {
   const cleaned = name
@@ -21,7 +23,8 @@ const MAX_CANVAS_SIDE = 15000;
 export async function exportNotesPdf(opts: {
   elements: readonly ExcalidrawElement[];
   files: BinaryFiles;
-  paper: "lined" | "blank";
+  paper: Paper;
+  paperColor?: string;
   pages: number;
   fileName: string;
 }): Promise<boolean> {
@@ -66,25 +69,7 @@ export async function exportNotesPdf(opts: {
     const ctx = page.getContext("2d");
     if (!ctx) continue;
 
-    const lined = opts.paper === "lined";
-    ctx.fillStyle = lined ? "#fffdf8" : "#ffffff";
-    ctx.fillRect(0, 0, w, h);
-    if (lined) {
-      // same rows as on screen: a ruled line at the bottom of every 40-unit row
-      ctx.strokeStyle = "rgba(96, 140, 200, 0.45)";
-      ctx.lineWidth = Math.max(1, k);
-      for (let y = LINE; y <= PAGE_H; y += LINE) {
-        ctx.beginPath();
-        ctx.moveTo(0, y * k);
-        ctx.lineTo(w, y * k);
-        ctx.stroke();
-      }
-      ctx.strokeStyle = "rgba(220, 80, 80, 0.5)";
-      ctx.beginPath();
-      ctx.moveTo(MARGIN_LINE_X * k, 0);
-      ctx.lineTo(MARGIN_LINE_X * k, h);
-      ctx.stroke();
-    }
+    drawPaper(ctx, opts.paper, paperColorOf(opts.paper, opts.paperColor), w, h, k, PAGE_W, PAGE_H);
     ctx.drawImage(src, (0 - minX) * k, (i * STRIDE - minY) * k, w, h, 0, 0, w, h);
 
     if (i > 0) pdf.addPage();

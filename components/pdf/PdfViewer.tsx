@@ -626,7 +626,7 @@ export default function PdfViewer({
           <div
             role="listbox"
             aria-label="Note color"
-            className="absolute left-0 top-full z-30 mt-1 w-40 border border-[var(--color-divider)] bg-[var(--color-bg)] p-1 shadow-[var(--shadow-md)]"
+            className="absolute left-0 top-full z-30 mt-1 w-40 border border-[var(--color-divider)] bg-white p-1 text-black shadow-[var(--shadow-md)]"
           >
             {HIGHLIGHT_COLORS.map((c) => (
               <button
@@ -676,7 +676,7 @@ export default function PdfViewer({
       ref={containerRef}
       onMouseUp={handleSelect}
       onScroll={() => pending && setPending(null)}
-      className="min-h-0 min-w-0 flex-1 overflow-auto bg-zinc-200 p-4 dark:bg-zinc-800"
+      className="min-h-0 min-w-0 flex-1 overflow-auto bg-zinc-200 p-4"
     >
       {Array.from({ length: pdf.numPages }, (_, i) => (
         <PageView

@@ -34,12 +34,14 @@ export default function NotesCanvas({
   boardId,
   onApi,
   paper,
+  paperColor,
   notePages,
   onNotePagesChange,
 }: {
   boardId: string;
   onApi?: (api: ExcalidrawImperativeAPI) => void;
   paper: Paper;
+  paperColor?: string;
   /** Pages saved on the board (the canvas grows past this if the content needs it). */
   notePages?: number;
   onNotePagesChange?: (pages: number) => void;
@@ -252,7 +254,7 @@ export default function NotesCanvas({
         <p className="p-6 text-zinc-500">Loading notes...</p>
       ) : (
         <>
-          <PaperBackground paper={paper} view={view} pages={pages} />
+          <PaperBackground paper={paper} color={paperColor} view={view} pages={pages} />
           <Excalidraw
             theme="light"
             excalidrawAPI={handleApi}

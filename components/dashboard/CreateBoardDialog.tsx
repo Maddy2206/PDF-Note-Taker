@@ -1,19 +1,21 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBoard } from "@/lib/storage";
 import { validatePdf } from "@/lib/pdf-validate";
 import type { Paper } from "@/lib/types";
+import PdfDropzone from "@/components/ui/PdfDropzone";
+import PageStylePicker from "@/components/ui/PageStylePicker";
 
 export default function CreateBoardDialog({ onClose }: { onClose: () => void }) {
   const router = useRouter();
-  const fileRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [paper, setPaper] = useState<Paper>("lined");
+  const [paperColor, setPaperColor] = useState("#fffdf8");
 
   async function pickFile(f: File | null) {
     setError(null);
@@ -22,7 +24,6 @@ export default function CreateBoardDialog({ onClose }: { onClose: () => void }) 
     const problem = await validatePdf(f);
     if (problem) {
       setError(problem);
-      if (fileRef.current) fileRef.current.value = "";
       return;
     }
     setFile(f);
@@ -34,7 +35,7 @@ export default function CreateBoardDialog({ onClose }: { onClose: () => void }) 
     if (!file || !name.trim()) return;
     setBusy(true);
     try {
-      const board = await createBoard(name.trim(), file, paper);
+      const board = await createBoard(name.trim(), file, paper, paperColor);
       router.push(`/board/${board.id}`);
     } catch {
       setError("Couldn't save the board. Browser storage may be full or blocked.");
@@ -50,46 +51,33 @@ export default function CreateBoardDialog({ onClose }: { onClose: () => void }) 
       <form
         onSubmit={submit}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md space-y-4 rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900"
+        style={{ background: "#ffffff", color: "#000000" }}
+        className="max-h-[94vh] w-full max-w-2xl space-y-5 overflow-y-auto border border-zinc-300 p-8 shadow-xl"
       >
-        <h2 className="text-lg font-semibold">Create board</h2>
+        <h2 className="text-2xl font-extrabold">Create board</h2>
         <label className="block text-sm">
-          <span className="mb-1 block text-zinc-600 dark:text-zinc-400">Board name</span>
+          <span className="mb-1 block text-zinc-600">Board name</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Organic Chemistry, ch. 3"
-            className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
+            className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2"
           />
         </label>
-        <label className="block text-sm">
-          <span className="mb-1 block text-zinc-600 dark:text-zinc-400">PDF file</span>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/pdf,.pdf"
-            onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
-            className="w-full text-sm"
-          />
-        </label>
-        <fieldset className="text-sm">
-          <legend className="mb-1 text-zinc-600 dark:text-zinc-400">Notes page type</legend>
-          <div className="flex gap-2">
-            {(["lined", "blank"] as const).map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setPaper(p)}
-                aria-pressed={paper === p}
-                className="flex-1 rounded-md border border-zinc-300 px-3 py-2 font-medium aria-pressed:border-indigo-600 aria-pressed:bg-indigo-600 aria-pressed:text-white dark:border-zinc-700"
-              >
-                {p === "lined" ? "Lined notebook" : "Blank page"}
-              </button>
-            ))}
-          </div>
-        </fieldset>
+        <div className="text-sm">
+          <span className="mb-1 block text-zinc-600">PDF file</span>
+          <PdfDropzone file={file} onFile={pickFile} />
+        </div>
+        <PageStylePicker
+          paper={paper}
+          color={paperColor}
+          onChange={(p, c) => {
+            setPaper(p);
+            setPaperColor(c);
+          }}
+        />
         {error && (
-          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          <p role="alert" className="text-sm text-red-600">
             {error}
           </p>
         )}
@@ -97,7 +85,7 @@ export default function CreateBoardDialog({ onClose }: { onClose: () => void }) 
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            className="rounded-md px-3 py-2 text-sm hover:bg-zinc-100"
           >
             Cancel
           </button>
