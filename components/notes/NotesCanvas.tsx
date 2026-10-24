@@ -59,7 +59,7 @@ function viewForPage(width: number, index: number): PaperView {
   return { zoom, scrollX: (width / zoom - PAGE_W) / 2, scrollY: 24 / zoom - pageTop(index) };
 }
 
-const CHIP = { w: 100, h: 28, gap: 8 };
+const CHIP = { w: 150, h: 34, gap: 12 };
 
 /** Places the chip above the note's top-right corner (below it if there is no room), inside the pane. */
 function chipStyle(
@@ -526,8 +526,12 @@ export default function NotesCanvas({
                 }}
                 title="Jump to where this note came from in the PDF"
                 style={chipStyle(source.box, view, size)}
-                className="absolute z-20 whitespace-nowrap border border-[var(--color-divider)] bg-white px-2 py-1 text-xs shadow hover:bg-[var(--color-surface)]"
+                className="source-chip absolute z-20"
               >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+                  <path d="M3 1.5h6l4 4v9H3z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+                  <path d="M6 9.5h4M8.5 7.5l2 2-2 2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
                 Go to source
               </button>
             )}
