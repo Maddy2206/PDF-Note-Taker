@@ -142,3 +142,8 @@ html { scroll-behavior: smooth; }
   background-color: var(--color-bg);
   background-image: radial-gradient(circle, var(--color-neutral-400) 1px, transparent 1.2px);
 }
+
+/* The notes toolbar replaces Excalidraw's own tool, style and menu chrome. */
+.notes-canvas .excalidraw .layer-ui__wrapper {
+  display: none !important;
+}

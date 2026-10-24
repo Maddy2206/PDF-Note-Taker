@@ -13,6 +13,8 @@ import { loadScene, saveScene } from "@/lib/storage";
 import { PAGE_H, PAGE_W, STRIDE, pageTop, pagesNeeded } from "@/lib/pages";
 import PaperBackground, { type PaperView } from "./PaperBackground";
 import InlineNoteEditor from "./InlineNoteEditor";
+import NotesToolbar, { type NoteTool } from "./NotesToolbar";
+import type { FontId } from "@/lib/handwriting-fonts";
 import {
   getNoteMeta,
   removeNote,
@@ -65,6 +67,10 @@ export default function NotesCanvas({
   notePages,
   onNotePagesChange,
   onSaveState,
+  ink,
+  onInk,
+  fontId,
+  onFont,
 }: {
   boardId: string;
   onApi?: (api: ExcalidrawImperativeAPI) => void;
@@ -75,6 +81,11 @@ export default function NotesCanvas({
   onNotePagesChange?: (pages: number) => void;
   /** Reports whether the notes are being saved, are saved, or couldn't be saved. */
   onSaveState?: (state: "saving" | "saved" | "error") => void;
+  /** Ink color and handwriting font, shared with the PDF pane. */
+  ink: string;
+  onInk: (color: string) => void;
+  fontId: FontId;
+  onFont: (font: FontId) => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -89,6 +100,8 @@ export default function NotesCanvas({
   const [selectedNote, setSelectedNote] = useState<{ id: string; meta: NoteMeta } | null>(null);
   const [editing, setEditing] = useState<{ id: string; meta: NoteMeta; x: number; y: number } | null>(null);
   const [saveError, setSaveError] = useState(false);
+  const [tool, setTool] = useState<NoteTool>("selection");
+  const [locked, setLocked] = useState(false);
 
   useEffect(() => {
     props.current = { notePages, onNotePagesChange, onSaveState };
@@ -196,6 +209,38 @@ export default function NotesCanvas({
     );
   }
 
+  function pickTool(t: NoteTool) {
+    apiRef.current?.setActiveTool({ type: t });
+  }
+
+  // The ink color is used by new strokes and recolors whatever is selected.
+  function pickInk(color: string) {
+    onInk(color);
+    const api = apiRef.current;
+    if (!api) return;
+    api.updateScene({ appState: { currentItemStrokeColor: color } as never });
+    if (selectedNote) {
+      updateHandwrittenNote(api, selectedNote.id, { ...selectedNote.meta, color });
+      return;
+    }
+    const st = api.getAppState();
+    const ids = Object.keys(st.selectedElementIds).filter((k) => st.selectedElementIds[k]);
+    if (ids.length === 0) return;
+    api.updateScene({
+      elements: api.getSceneElements().map((e) =>
+        ids.includes(e.id) && e.type !== "image"
+          ? ({ ...e, strokeColor: color, version: e.version + 1, versionNonce: Math.floor(Math.random() * 2 ** 31) } as typeof e)
+          : e,
+      ),
+    });
+  }
+
+  function pickFont(font: FontId) {
+    onFont(font);
+    const api = apiRef.current;
+    if (api && selectedNote) updateHandwrittenNote(api, selectedNote.id, { ...selectedNote.meta, font });
+  }
+
   function addPage() {
     ensurePages(pagesRef.current + 1);
     goToPage(pagesRef.current - 1);
@@ -258,6 +303,7 @@ export default function NotesCanvas({
         ? prev
         : next,
     );
+    setTool(appState.activeTool.type as NoteTool);
     const selectedIds = Object.keys(appState.selectedElementIds).filter(
       (k) => appState.selectedElementIds[k],
     );
@@ -348,20 +394,37 @@ export default function NotesCanvas({
           <span aria-hidden className="text-lg leading-none">+</span> Add page
         </button>
       </div>
+      <NotesToolbar
+        tool={tool}
+        onTool={pickTool}
+        locked={locked}
+        onLock={() => setLocked((v) => !v)}
+        ink={ink}
+        onInk={pickInk}
+        fontId={fontId}
+        onFont={pickFont}
+        disabled={initial === undefined}
+      />
       <div
         ref={wrapRef}
         onDoubleClick={(e) => {
-          if (!selectedNote || editing) return;
-          const el = apiRef.current?.getSceneElements().find((x) => x.id === selectedNote.id);
+          const api = apiRef.current;
           const box = wrapRef.current?.getBoundingClientRect();
-          if (!el || !box) return;
+          if (!api || !box || editing || locked) return;
           const px = (e.clientX - box.left) / view.zoom - view.scrollX;
           const py = (e.clientY - box.top) / view.zoom - view.scrollY;
-          if (px >= el.x && px <= el.x + el.width && py >= el.y && py <= el.y + el.height) {
-            startEdit(selectedNote.id, selectedNote.meta);
-          }
+          // the top-most note under the pointer, selected or not
+          const hit = [...api.getSceneElements()].reverse().find((el) => {
+            return (
+              !el.isDeleted &&
+              getNoteMeta(el) &&
+              px >= el.x && px <= el.x + el.width && py >= el.y && py <= el.y + el.height
+            );
+          });
+          const meta = hit && getNoteMeta(hit);
+          if (hit && meta) startEdit(hit.id, meta);
         }}
-        className="relative min-h-0 w-full flex-1 [&_.excalidraw]:!bg-transparent [&_.excalidraw_.excalidraw-container]:!bg-transparent"
+        className="notes-canvas relative min-h-0 w-full flex-1 [&_.excalidraw]:!bg-transparent [&_.excalidraw_.excalidraw-container]:!bg-transparent"
       >
         {initial === undefined ? (
           <p className="p-6 text-zinc-500">Loading notes...</p>
@@ -373,6 +436,7 @@ export default function NotesCanvas({
               excalidrawAPI={handleApi}
               initialData={initialData}
               onChange={handleChange}
+              viewModeEnabled={locked}
             />
             {saveError && (
               <p
@@ -381,14 +445,6 @@ export default function NotesCanvas({
               >
                 Couldn&apos;t save your notes. Browser storage may be full or blocked.
               </p>
-            )}
-            {selectedNote && !editing && (
-              <button
-                onClick={() => startEdit(selectedNote.id, selectedNote.meta)}
-                className="btn btn-primary absolute left-3 top-16 z-10 shadow-[var(--shadow-md)]"
-              >
-                Edit text
-              </button>
             )}
             {editing && (
               <InlineNoteEditor

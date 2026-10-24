@@ -9,7 +9,7 @@ import type { NoteMeta } from "./handwritten";
 /**
  * Edits a handwritten note right on the page: a transparent text box laid over the note
  * in the same font, color and line height, so typing, inserting and deleting look the same
- * as the finished note. Ctrl+Enter or clicking away saves; Escape cancels.
+ * as the finished note. Ctrl+Enter or clicking away saves; Escape cancels. Double-click any note to open it.
  */
 export default function InlineNoteEditor({
   meta,
@@ -31,6 +31,8 @@ export default function InlineNoteEditor({
   const [text, setText] = useState(meta.text);
   const ref = useRef<HTMLTextAreaElement>(null);
   const done = useRef(false);
+  // Browsers without field-sizing keep the full page width instead.
+  const [autoSize] = useState(() => typeof CSS !== "undefined" && CSS.supports("field-sizing", "content"));
 
   const fit = (el: HTMLTextAreaElement) => {
     el.style.height = "0px";
@@ -73,12 +75,16 @@ export default function InlineNoteEditor({
         position: "absolute",
         left: x,
         top: y,
-        width: (MAX_WIDTH + PAD * 2) * zoom,
+        // grows with what is typed, wrapping only at the page width
+        fieldSizing: autoSize ? "content" : undefined,
+        minWidth: 48 * zoom,
+        maxWidth: (MAX_WIDTH + PAD * 2) * zoom,
+        width: autoSize ? undefined : (MAX_WIDTH + PAD * 2) * zoom,
         padding: `0 0 0 ${PAD * zoom}px`,
         margin: 0,
         border: 0,
-        outline: `2px solid var(--color-accent)`,
-        outlineOffset: 2,
+        outline: `1px dashed var(--color-accent)`,
+        outlineOffset: 3,
         resize: "none",
         overflow: "hidden",
         background: "transparent",

@@ -18,7 +18,7 @@ import { PAPERS, paperColorOf } from "@/lib/paper";
 import PageStyleMenu from "@/components/notes/PageStyleMenu";
 import type { Board, Highlight, PdfDoc } from "@/lib/types";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
-import type { FontId } from "@/lib/handwriting-fonts";
+import { HANDWRITING_FONTS, HIGHLIGHT_COLORS, type FontId } from "@/lib/handwriting-fonts";
 import dynamic from "next/dynamic";
 import PdfViewer, { type PendingSelection } from "@/components/pdf/PdfViewer";
 import PdfTabs from "@/components/pdf/PdfTabs";
@@ -42,6 +42,29 @@ export default function BoardPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [saveState, setSaveState] = useState<"saving" | "saved" | "error">("saved");
+  // Remember the last color and font (a per-browser convenience, never required).
+  const [ink, setInk] = useState(() => {
+    try {
+      const c = localStorage.getItem("pdfnote.ink");
+      if (c && HIGHLIGHT_COLORS.some((x) => x.value === c)) return c;
+    } catch {}
+    return HIGHLIGHT_COLORS[0].value;
+  });
+  const [fontId, setFontId] = useState<FontId>(() => {
+    try {
+      const f = localStorage.getItem("pdfnote.font");
+      if (f && HANDWRITING_FONTS.some((x) => x.id === f)) return f;
+    } catch {}
+    return "caveat";
+  });
+  function pickInk(c: string) {
+    setInk(c);
+    try { localStorage.setItem("pdfnote.ink", c); } catch {}
+  }
+  function pickFont(f: FontId) {
+    setFontId(f);
+    try { localStorage.setItem("pdfnote.font", f); } catch {}
+  }
   const handleApi = useCallback((a: ExcalidrawImperativeAPI) => setApi(a), []);
 
   useEffect(() => {
@@ -344,6 +367,8 @@ export default function BoardPage() {
                     initialPage={activeDoc.lastPage}
                     onPageChange={(lastPage) => patchDoc(activeDoc.id, { lastPage })}
                     onLoaded={(pageCount) => patchDoc(activeDoc.id, { pageCount })}
+                    ink={ink}
+                    fontId={fontId}
                   />
                 ) : (
                   <p className="p-6 text-zinc-500">Loading PDF...</p>
@@ -360,6 +385,10 @@ export default function BoardPage() {
               notePages={board.notePages}
               onNotePagesChange={(notePages) => save({ notePages })}
               onSaveState={setSaveState}
+              ink={ink}
+              onInk={pickInk}
+              fontId={fontId}
+              onFont={pickFont}
             />
           }
         />

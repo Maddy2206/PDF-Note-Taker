@@ -3,16 +3,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import type { Highlight, HighlightRect } from "@/lib/types";
-import {
-  HANDWRITING_FONTS,
-  HIGHLIGHT_COLORS,
-  getFont,
-  isWhite,
-  type FontId,
-} from "@/lib/handwriting-fonts";
+import { getFont, isWhite, type FontId } from "@/lib/handwriting-fonts";
 import { mostVisiblePage } from "@/lib/visible-page";
 import SelectionPopout from "./SelectionPopout";
-import FontPicker from "@/components/ui/FontPicker";
 import DiagramSelect, { type DiagramImage } from "./DiagramSelect";
 import "pdfjs-dist/web/pdf_viewer.css";
 
@@ -243,6 +236,8 @@ export default function PdfViewer({
   onImportDiagram,
   initialPage = 1,
   onPageChange,
+  ink,
+  fontId,
 }: {
   blob: Blob;
   highlights?: Highlight[];
@@ -253,6 +248,9 @@ export default function PdfViewer({
   onImportDiagram?: (img: DiagramImage) => void | Promise<void>;
   initialPage?: number;
   onPageChange?: (page: number) => void;
+  /** Note color and handwriting font, picked on the notes toolbar. */
+  ink: string;
+  fontId: FontId;
 }) {
   const [clipMode, setClipMode] = useState(false);
 
@@ -268,30 +266,6 @@ export default function PdfViewer({
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [noText, setNoText] = useState(false);
-  // Remember the last color and font (a per-browser convenience, never required).
-  // This component only mounts after the board has loaded in the browser.
-  const [ink, setInk] = useState(() => {
-    try {
-      const c = localStorage.getItem("pdfnote.ink");
-      if (c && HIGHLIGHT_COLORS.some((x) => x.value === c)) return c;
-    } catch {}
-    return HIGHLIGHT_COLORS[0].value;
-  });
-  const [fontId, setFontId] = useState<FontId>(() => {
-    try {
-      const f = localStorage.getItem("pdfnote.font");
-      if (f && HANDWRITING_FONTS.some((x) => x.id === f)) return f as FontId;
-    } catch {}
-    return "caveat";
-  });
-  function pickInk(c: string) {
-    setInk(c);
-    try { localStorage.setItem("pdfnote.ink", c); } catch {}
-  }
-  function pickFont(f: FontId) {
-    setFontId(f);
-    try { localStorage.setItem("pdfnote.font", f); } catch {}
-  }
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState<number | null>(initialZoom);
   const [fitScale, setFitScale] = useState(1);
@@ -304,14 +278,6 @@ export default function PdfViewer({
   const [current, setCurrent] = useState(initialPage);
   const [pageDraft, setPageDraft] = useState<string | null>(null);
   const [showThumbs, setShowThumbs] = useState(true);
-  const [colorOpen, setColorOpen] = useState(false);
-
-  useEffect(() => {
-    if (!colorOpen) return;
-    const close = () => setColorOpen(false);
-    window.addEventListener("click", close);
-    return () => window.removeEventListener("click", close);
-  }, [colorOpen]);
   const [pending, setPending] = useState<{ sel: PendingSelection; x: number; y: number } | null>(null);
 
   // Every page's size at scale 1: gives "fit to width" and keeps page heights right
@@ -603,51 +569,18 @@ export default function PdfViewer({
           }}
           aria-pressed={clipMode}
           title="Drag a box around a diagram (Esc to exit)"
-          className="btn flex-none !border-2 !border-[var(--color-text)] !px-3 aria-pressed:!border-[var(--color-accent)] aria-pressed:bg-[var(--color-accent)] aria-pressed:text-[var(--color-bg)]"
+          className="btn flex-none gap-1.5 !border-2 !border-[var(--color-text)] !px-3 aria-pressed:!border-[var(--color-accent)] aria-pressed:bg-[var(--color-accent)] aria-pressed:text-[var(--color-bg)]"
         >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <circle cx="6" cy="6" r="3" />
+            <path d="M8.12 8.12 12 12" />
+            <path d="M20 4 8.12 15.88" />
+            <circle cx="6" cy="18" r="3" />
+            <path d="M14.8 14.8 20 20" />
+          </svg>
           {clipMode ? "Drag a box… (Esc)" : "Clip diagram"}
         </button>
       )}
-      <div className="relative" onClick={(e) => e.stopPropagation()}>
-        <button
-          onClick={() => setColorOpen((v) => !v)}
-          aria-haspopup="listbox"
-          aria-expanded={colorOpen}
-          aria-label="Note color"
-          className="btn btn-secondary gap-1.5 !px-2"
-        >
-          <span
-            className="h-4 w-4 border border-black/30"
-            style={{ background: ink }}
-            aria-hidden
-          />
-          <span aria-hidden className="text-[10px]">▾</span>
-        </button>
-        {colorOpen && (
-          <div
-            role="listbox"
-            aria-label="Note color"
-            className="absolute left-0 top-full z-30 mt-1 w-40 border border-[var(--color-divider)] bg-white p-1 text-black shadow-[var(--shadow-md)]"
-          >
-            {HIGHLIGHT_COLORS.map((c) => (
-              <button
-                key={c.id}
-                role="option"
-                aria-selected={ink === c.value}
-                onClick={() => {
-                  pickInk(c.value);
-                  setColorOpen(false);
-                }}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-[13px] hover:bg-[var(--color-surface)] aria-selected:font-extrabold"
-              >
-                <span className="h-4 w-4 border border-black/30" style={{ background: c.value }} aria-hidden />
-                {c.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-      <FontPicker value={fontId} onChange={pickFont} />
     </div>
     {noText && (
       <p role="status" className="shrink-0 bg-amber-100 px-3 py-1.5 text-sm text-amber-900">
