@@ -55,7 +55,7 @@ export default function PdfTabs({
   }
 
   return (
-    <div className="flex h-10 flex-none items-stretch border-b border-[var(--color-divider)] bg-[var(--color-surface)]">
+    <div className="flex h-[42px] flex-none items-stretch border-b-2 border-[var(--color-divider)] bg-[var(--color-surface)]">
       <div
         role="tablist"
         aria-label="PDFs in this board"
@@ -67,12 +67,16 @@ export default function PdfTabs({
             <div
               key={d.id}
               ref={active ? activeRef : undefined}
-              className={`group flex max-w-56 flex-none items-center gap-1 border-r border-[var(--color-divider)] px-3 text-sm ${
+              className={`group flex max-w-56 flex-none items-center gap-1.5 border-r border-[var(--color-divider)] px-3 text-[13px] ${
                 active
-                  ? "border-b-2 border-b-[var(--color-accent)] bg-white font-extrabold"
+                  ? "-mb-0.5 bg-[var(--color-bg)] font-bold shadow-[inset_0_3px_0_var(--color-accent)]"
                   : "hover:bg-[color-mix(in_srgb,var(--color-text)_7%,transparent)]"
               }`}
             >
+              <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="flex-none opacity-70">
+                <path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z" />
+                <path d="M14 3v5h5" />
+              </svg>
               {renaming === d.id ? (
                 <input
                   autoFocus

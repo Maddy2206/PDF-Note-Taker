@@ -10,7 +10,7 @@ import type {
 } from "@excalidraw/excalidraw/types";
 import type { OrderedExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import { loadScene, saveScene } from "@/lib/storage";
-import { PAGE_W, STRIDE, pageTop, pagesNeeded } from "@/lib/pages";
+import { PAGE_H, PAGE_W, STRIDE, pageTop, pagesNeeded } from "@/lib/pages";
 import PaperBackground, { type PaperView } from "./PaperBackground";
 import InlineNoteEditor from "./InlineNoteEditor";
 import {
@@ -23,6 +23,33 @@ import {
 import type { Paper, SceneRecord } from "@/lib/types";
 
 const SAVE_DELAY_MS = 800;
+
+const DESK = 16;
+const FOOTER = 16;
+
+/**
+ * Keeps the view over the notebook: you can't scroll into empty gray desk past the first
+ * or last page. When the pages are smaller than the pane they stay centered.
+ */
+function clampScroll(
+  scrollX: number,
+  scrollY: number,
+  zoom: number,
+  width: number,
+  height: number,
+  pages: number,
+) {
+  const m = DESK / zoom;
+  const bottom = FOOTER / zoom;
+  const vw = width / zoom;
+  const vh = height / zoom;
+  const total = pageTop(pages - 1) + PAGE_H;
+  const axis = (scroll: number, view: number, content: number, end: number) => {
+    if (view >= content + m + end) return (view - content) / 2;
+    return Math.min(m, Math.max(view - content - end, scroll));
+  };
+  return { x: axis(scrollX, vw, PAGE_W, m), y: axis(scrollY, vh, total, bottom) };
+}
 
 /** Zoom and scroll that show notebook page `index` centered, fitted to the pane width. */
 function viewForPage(width: number, index: number): PaperView {
@@ -37,6 +64,7 @@ export default function NotesCanvas({
   paperColor,
   notePages,
   onNotePagesChange,
+  onSaveState,
 }: {
   boardId: string;
   onApi?: (api: ExcalidrawImperativeAPI) => void;
@@ -45,13 +73,15 @@ export default function NotesCanvas({
   /** Pages saved on the board (the canvas grows past this if the content needs it). */
   notePages?: number;
   onNotePagesChange?: (pages: number) => void;
+  /** Reports whether the notes are being saved, are saved, or couldn't be saved. */
+  onSaveState?: (state: "saving" | "saved" | "error") => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [view, setView] = useState<PaperView>({ scrollX: 0, scrollY: 0, zoom: 1 });
   const [pages, setPages] = useState(notePages ?? 1);
   const pagesRef = useRef(notePages ?? 1);
-  const props = useRef({ notePages, onNotePagesChange });
+  const props = useRef({ notePages, onNotePagesChange, onSaveState });
   const [initial, setInitial] = useState<SceneRecord | null | undefined>(undefined);
   const [startView, setStartView] = useState<PaperView | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -61,7 +91,7 @@ export default function NotesCanvas({
   const [saveError, setSaveError] = useState(false);
 
   useEffect(() => {
-    props.current = { notePages, onNotePagesChange };
+    props.current = { notePages, onNotePagesChange, onSaveState };
   });
 
   // When the pane changes width (PDF / Split / Notes), re-center the current page in it.
@@ -140,6 +170,32 @@ export default function NotesCanvas({
     });
   }
 
+  function zoomBy(factor: number) {
+    const api = apiRef.current;
+    if (!api) return;
+    const st = api.getAppState();
+    const z = Math.min(Math.max(st.zoom.value * factor, 0.25), 3);
+    // keep the middle of the pane where it is
+    const dx = (size.w / 2) * (1 / z - 1 / st.zoom.value);
+    const dy = (size.h / 2) * (1 / z - 1 / st.zoom.value);
+    api.updateScene({
+      appState: { scrollX: st.scrollX + dx, scrollY: st.scrollY + dy, zoom: { value: z } } as never,
+    });
+  }
+
+  // Same trick as the board page: Excalidraw handles its own undo and redo shortcuts.
+  function history(redo: boolean) {
+    document.querySelector(".excalidraw")?.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: redo ? "y" : "z",
+        code: redo ? "KeyY" : "KeyZ",
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+  }
+
   function addPage() {
     ensurePages(pagesRef.current + 1);
     goToPage(pagesRef.current - 1);
@@ -176,6 +232,21 @@ export default function NotesCanvas({
     files: BinaryFiles,
   ) {
     ensurePages(pagesNeeded(elements));
+    const box = wrapRef.current;
+    if (box && box.clientWidth > 0 && box.clientHeight > 0) {
+      const c = clampScroll(
+        appState.scrollX,
+        appState.scrollY,
+        appState.zoom.value,
+        box.clientWidth,
+        box.clientHeight,
+        pagesRef.current,
+      );
+      if (Math.abs(c.x - appState.scrollX) > 0.5 || Math.abs(c.y - appState.scrollY) > 0.5) {
+        apiRef.current?.updateScene({ appState: { scrollX: c.x, scrollY: c.y } as never });
+        return; // the corrected view triggers another change with the right values
+      }
+    }
     // Update the paper in the same frame as the canvas; deferring it made it lag and shake.
     const next = {
       scrollX: appState.scrollX,
@@ -202,6 +273,7 @@ export default function NotesCanvas({
     });
 
     if (timer.current) clearTimeout(timer.current);
+    props.current.onSaveState?.("saving");
     timer.current = setTimeout(() => {
       saveScene({
         boardId,
@@ -213,8 +285,14 @@ export default function NotesCanvas({
           zoom: appState.zoom,
         },
       })
-        .then(() => setSaveError(false))
-        .catch(() => setSaveError(true));
+        .then(() => {
+          setSaveError(false);
+          props.current.onSaveState?.("saved");
+        })
+        .catch(() => {
+          setSaveError(true);
+          props.current.onSaveState?.("error");
+        });
     }, SAVE_DELAY_MS);
   }
 
@@ -234,94 +312,122 @@ export default function NotesCanvas({
     [initial, startView],
   );
 
+  const barBtn =
+    "btn btn-icon !h-7 !w-7 disabled:opacity-40";
   return (
-    <div
-      ref={wrapRef}
-      onDoubleClick={(e) => {
-        if (!selectedNote || editing) return;
-        const el = apiRef.current?.getSceneElements().find((x) => x.id === selectedNote.id);
-        const box = wrapRef.current?.getBoundingClientRect();
-        if (!el || !box) return;
-        const px = (e.clientX - box.left) / view.zoom - view.scrollX;
-        const py = (e.clientY - box.top) / view.zoom - view.scrollY;
-        if (px >= el.x && px <= el.x + el.width && py >= el.y && py <= el.y + el.height) {
-          startEdit(selectedNote.id, selectedNote.meta);
-        }
-      }}
-      className="relative h-full w-full [&_.excalidraw]:!bg-transparent [&_.excalidraw_.excalidraw-container]:!bg-transparent"
-    >
-      {initial === undefined ? (
-        <p className="p-6 text-zinc-500">Loading notes...</p>
-      ) : (
-        <>
-          <PaperBackground paper={paper} color={paperColor} view={view} pages={pages} />
-          <Excalidraw
-            theme="light"
-            excalidrawAPI={handleApi}
-            initialData={initialData}
-            onChange={handleChange}
-          />
-          <div className="absolute bottom-16 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-zinc-300 bg-white px-1.5 py-1 text-sm text-zinc-800 shadow">
-            <button
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={currentPage === 0}
-              aria-label="Previous page"
-              className="rounded px-2 py-0.5 hover:bg-zinc-100 disabled:opacity-40"
-            >
-              &lsaquo;
-            </button>
-            <span className="min-w-20 text-center tabular-nums">
-              Page {currentPage + 1} / {pages}
-            </span>
-            <button
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={currentPage >= pages - 1}
-              aria-label="Next page"
-              className="rounded px-2 py-0.5 hover:bg-zinc-100 disabled:opacity-40"
-            >
-              &rsaquo;
-            </button>
-            <button
-              onClick={() => goToPage(currentPage)}
-              className="rounded px-2 py-0.5 hover:bg-zinc-100"
-            >
-              Fit page
-            </button>
-            <button
-              onClick={addPage}
-              className="rounded bg-indigo-600 px-2.5 py-0.5 font-medium text-white hover:bg-indigo-700"
-            >
-              + Add page
-            </button>
-          </div>
-          {saveError && (
-            <p
-              role="alert"
-              className="absolute bottom-28 left-1/2 z-10 -translate-x-1/2 rounded-md bg-red-100 px-3 py-1.5 text-sm text-red-900 shadow"
-            >
-              Couldn&apos;t save your notes. Browser storage may be full or blocked.
-            </p>
-          )}
-          {selectedNote && !editing && (
-            <button
-              onClick={() => startEdit(selectedNote.id, selectedNote.meta)}
-              className="absolute left-3 top-16 z-10 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow"
-            >
-              Edit text
-            </button>
-          )}
-          {editing && (
-            <InlineNoteEditor
-              meta={editing.meta}
-              x={(editing.x + view.scrollX) * view.zoom}
-              y={(editing.y + view.scrollY) * view.zoom}
-              zoom={view.zoom}
-              onCommit={commitEdit}
-              onCancel={cancelEdit}
+    <div className="flex h-full w-full flex-col">
+      <div className="flex h-[42px] flex-none border-b-2 border-[var(--color-divider)] bg-[var(--color-surface)]">
+        <div
+          role="tablist"
+          aria-label="Notebook pages"
+          className="flex min-w-0 overflow-x-auto [scrollbar-width:none]"
+        >
+          {Array.from({ length: pages }, (_, i) => {
+            const on = i === currentPage;
+            return (
+              <button
+                key={i}
+                role="tab"
+                aria-selected={on}
+                onClick={() => goToPage(i)}
+                className={`flex flex-none items-center whitespace-nowrap border-r border-[var(--color-divider)] px-4 text-[13px] ${
+                  on
+                    ? "-mb-0.5 h-[44px] bg-[var(--color-bg)] font-bold shadow-[inset_0_3px_0_var(--color-accent)]"
+                    : "h-[42px] font-medium hover:bg-[color-mix(in_srgb,var(--color-text)_7%,transparent)]"
+                }`}
+              >
+                Page {i + 1}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          onClick={addPage}
+          className="flex flex-none items-center gap-1.5 whitespace-nowrap px-3.5 text-[13px] font-semibold text-[var(--color-accent-700)] hover:bg-[var(--color-accent-100)]"
+        >
+          <span aria-hidden className="text-lg leading-none">+</span> Add page
+        </button>
+      </div>
+      <div
+        ref={wrapRef}
+        onDoubleClick={(e) => {
+          if (!selectedNote || editing) return;
+          const el = apiRef.current?.getSceneElements().find((x) => x.id === selectedNote.id);
+          const box = wrapRef.current?.getBoundingClientRect();
+          if (!el || !box) return;
+          const px = (e.clientX - box.left) / view.zoom - view.scrollX;
+          const py = (e.clientY - box.top) / view.zoom - view.scrollY;
+          if (px >= el.x && px <= el.x + el.width && py >= el.y && py <= el.y + el.height) {
+            startEdit(selectedNote.id, selectedNote.meta);
+          }
+        }}
+        className="relative min-h-0 w-full flex-1 [&_.excalidraw]:!bg-transparent [&_.excalidraw_.excalidraw-container]:!bg-transparent"
+      >
+        {initial === undefined ? (
+          <p className="p-6 text-zinc-500">Loading notes...</p>
+        ) : (
+          <>
+            <PaperBackground paper={paper} color={paperColor} view={view} pages={pages} />
+            <Excalidraw
+              theme="light"
+              excalidrawAPI={handleApi}
+              initialData={initialData}
+              onChange={handleChange}
             />
-          )}
-        </>
-      )}
+            {saveError && (
+              <p
+                role="alert"
+                className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 bg-red-100 px-3 py-1.5 text-sm text-red-900 shadow"
+              >
+                Couldn&apos;t save your notes. Browser storage may be full or blocked.
+              </p>
+            )}
+            {selectedNote && !editing && (
+              <button
+                onClick={() => startEdit(selectedNote.id, selectedNote.meta)}
+                className="btn btn-primary absolute left-3 top-16 z-10 shadow-[var(--shadow-md)]"
+              >
+                Edit text
+              </button>
+            )}
+            {editing && (
+              <InlineNoteEditor
+                meta={editing.meta}
+                x={(editing.x + view.scrollX) * view.zoom}
+                y={(editing.y + view.scrollY) * view.zoom}
+                zoom={view.zoom}
+                onCommit={commitEdit}
+                onCancel={cancelEdit}
+              />
+            )}
+          </>
+        )}
+      </div>
+      <div className="flex h-[34px] flex-none items-center gap-1 overflow-hidden whitespace-nowrap border-t border-[var(--color-divider)] px-1.5 text-xs">
+        <button onClick={() => zoomBy(1 / 1.15)} aria-label="Zoom out notebook" className={barBtn}>
+          &minus;
+        </button>
+        <span className="min-w-10 text-center tabular-nums">{Math.round(view.zoom * 100)}%</span>
+        <button onClick={() => zoomBy(1.15)} aria-label="Zoom in notebook" className={barBtn}>
+          +
+        </button>
+        <button
+          onClick={() => goToPage(currentPage)}
+          className="px-2 py-1 hover:bg-[var(--color-surface)]"
+        >
+          Fit page
+        </button>
+        <span className="mx-1 h-[18px] w-px bg-[var(--color-divider)]" aria-hidden />
+        <button onClick={() => history(false)} aria-label="Undo" title="Undo (Ctrl+Z)" className={barBtn}>
+          &#8630;
+        </button>
+        <button onClick={() => history(true)} aria-label="Redo" title="Redo (Ctrl+Y)" className={barBtn}>
+          &#8631;
+        </button>
+        <span className="ml-auto pr-2 tabular-nums text-[color-mix(in_srgb,var(--color-text)_70%,transparent)]">
+          Page {currentPage + 1} of {pages}
+        </span>
+      </div>
     </div>
   );
 }

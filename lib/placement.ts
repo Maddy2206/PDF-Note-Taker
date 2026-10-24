@@ -8,8 +8,6 @@ export interface Box {
   isDeleted?: boolean;
 }
 
-export { LINE };
-
 /**
  * The next free spot for a new item of the given height: left margin, on the first
  * ruled line below everything on the canvas. If the item would run past the bottom

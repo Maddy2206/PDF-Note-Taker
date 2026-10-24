@@ -41,6 +41,7 @@ export default function BoardPage() {
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [saveState, setSaveState] = useState<"saving" | "saved" | "error">("saved");
   const handleApi = useCallback((a: ExcalidrawImperativeAPI) => setApi(a), []);
 
   useEffect(() => {
@@ -242,7 +243,7 @@ export default function BoardPage() {
 
   return (
     <div className="flex h-screen flex-col">
-      <header className="flex h-[52px] flex-none items-center gap-2.5 border-b-2 border-[var(--color-divider)] px-2.5">
+      <header className="flex h-14 flex-none items-center gap-2.5 border-b-2 border-[var(--color-divider)] pl-2 pr-3">
         <Link href="/dashboard" aria-label="Back to boards" className="btn btn-icon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5M11 6l-6 6 6 6" />
@@ -250,10 +251,28 @@ export default function BoardPage() {
         </Link>
         <div className="mr-auto flex min-w-0 flex-col">
           <span className="whitespace-nowrap text-[11px] uppercase tracking-[0.08em] text-[var(--color-accent-700)]">
-            {PAPERS.find((x) => x.id === board.paper)?.label} notebook
+            {PAPERS.find((x) => x.id === board.paper)?.label} notebook · {docs.length} {docs.length === 1 ? "PDF" : "PDFs"}
           </span>
-          <span className="truncate text-[15px] font-extrabold">{board.name}</span>
+          <span className="truncate text-[17px] font-extrabold tracking-[-0.01em]">{board.name}</span>
         </div>
+        <span
+          role="status"
+          className="flex items-center gap-1.5 whitespace-nowrap text-xs text-[color-mix(in_srgb,var(--color-text)_70%,transparent)]"
+        >
+          <span
+            aria-hidden
+            className={
+              saveState === "saving"
+                ? "h-2 w-2 bg-[var(--color-neutral-400)]"
+                : saveState === "error"
+                  ? "h-2 w-2 bg-[var(--color-accent)]"
+                  : "text-[var(--color-accent)]"
+            }
+          >
+            {saveState === "saved" ? "✓" : ""}
+          </span>
+          {saveState === "saving" ? "Saving…" : saveState === "error" ? "Not saved" : "Saved"}
+        </span>
         <PageStyleMenu
           paper={board.paper}
           color={paperColorOf(board.paper, board.paperColor)}
@@ -340,6 +359,7 @@ export default function BoardPage() {
               paperColor={board.paperColor}
               notePages={board.notePages}
               onNotePagesChange={(notePages) => save({ notePages })}
+              onSaveState={setSaveState}
             />
           }
         />

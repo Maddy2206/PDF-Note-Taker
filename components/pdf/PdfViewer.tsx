@@ -539,7 +539,7 @@ export default function PdfViewer({
 
   return (
     <div className="flex h-full flex-col">
-    <div className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-[var(--color-divider)] bg-[var(--color-bg)] px-2 text-sm">
+    <div className="flex h-11 shrink-0 items-center gap-x-1 overflow-x-auto whitespace-nowrap border-b border-[var(--color-divider)] bg-[var(--color-bg)] px-2 text-sm [scrollbar-width:none]">
       <button
         onClick={() => setShowThumbs((v) => !v)}
         aria-label="Toggle page thumbnails"
@@ -571,7 +571,7 @@ export default function PdfViewer({
             e.currentTarget.blur();
           }
         }}
-        className="h-7 w-10 border border-[var(--color-divider)] bg-transparent text-center tabular-nums"
+        className="h-[30px] w-[52px] flex-none border border-[var(--color-divider)] bg-[var(--color-surface)] text-center tabular-nums"
       />
       <span className="tabular-nums text-[color-mix(in_srgb,var(--color-text)_70%,transparent)]">
         / {pdf.numPages}
@@ -593,6 +593,7 @@ export default function PdfViewer({
         {zoom === null ? "Fit page" : "Fit width"}
       </button>
       <span className="mx-1.5 h-5 w-px bg-[var(--color-divider)]" aria-hidden />
+      <span className="ml-auto" aria-hidden />
       {onImportDiagram && (
         <button
           onClick={() => {
@@ -602,7 +603,7 @@ export default function PdfViewer({
           }}
           aria-pressed={clipMode}
           title="Drag a box around a diagram (Esc to exit)"
-          className="btn btn-secondary !px-2 aria-pressed:bg-[var(--color-accent)] aria-pressed:text-[var(--color-bg)]"
+          className="btn flex-none !border-2 !border-[var(--color-text)] !px-3 aria-pressed:!border-[var(--color-accent)] aria-pressed:bg-[var(--color-accent)] aria-pressed:text-[var(--color-bg)]"
         >
           {clipMode ? "Drag a box… (Esc)" : "Clip diagram"}
         </button>
@@ -704,6 +705,17 @@ export default function PdfViewer({
         />
       )}
     </div>
+    </div>
+    <div className="flex h-[34px] flex-none items-center gap-3 overflow-hidden whitespace-nowrap border-t border-[var(--color-divider)] px-3 text-xs">
+      <span className="font-semibold tabular-nums">
+        Page {current} of {pdf.numPages}
+      </span>
+      <span className="ml-auto h-0.5 w-24 flex-none bg-[var(--color-neutral-300)]" aria-hidden>
+        <span
+          className="block h-full bg-[var(--color-accent)]"
+          style={{ width: `${(current / pdf.numPages) * 100}%` }}
+        />
+      </span>
     </div>
     </div>
   );

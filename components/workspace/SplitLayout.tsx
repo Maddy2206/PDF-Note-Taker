@@ -90,7 +90,9 @@ export default function SplitLayout({
       >
         <div className="h-full overflow-hidden">{pdf}</div>
       </Panel>
-      <Separator className="w-1.5 bg-zinc-200 transition-colors hover:bg-indigo-400 data-[separator=active]:bg-indigo-500" />
+      <Separator className="flex w-2.5 flex-none justify-center bg-[var(--color-bg)] transition-colors hover:bg-[var(--color-accent-100)] data-[separator=active]:bg-[var(--color-accent-100)]">
+        <span className="w-0.5 bg-[var(--color-divider)]" />
+      </Separator>
       <Panel
         id="notes"
         panelRef={notesRef}

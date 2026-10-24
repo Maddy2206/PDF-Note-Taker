@@ -230,10 +230,6 @@ export async function saveHighlight(h: Highlight): Promise<void> {
   await (await db()).put("highlights", h);
 }
 
-export async function deleteHighlight(id: string): Promise<void> {
-  await (await db()).delete("highlights", id);
-}
-
 export async function loadScene(
   boardId: string,
 ): Promise<SceneRecord | undefined> {
