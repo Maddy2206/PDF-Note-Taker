@@ -58,6 +58,8 @@ export interface Highlight {
   color: string;
   text: string;
   font: string;
+  /** The exported note on the board, so removing the highlight can remove it too. */
+  noteId?: string;
 }
 
 /** The saved Excalidraw notes for a board. */

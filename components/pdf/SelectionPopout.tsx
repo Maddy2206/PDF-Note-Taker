@@ -1,23 +1,30 @@
 "use client";
 
+import { MARKER_COLORS } from "@/lib/handwriting-fonts";
+
 interface Props {
   x: number;
   y: number;
   /** Current note color and handwriting font, chosen in the toolbar above the PDF. */
   color: string;
+  /** Light color of the highlight drawn over the PDF text. */
+  marker: string;
+  onMarker: (c: string) => void;
   fontLabel: string;
   fontFamily: string;
   onExport: () => void;
   onDismiss: () => void;
 }
 
-const HALF_WIDTH = 190; // about half the popout's width
+const HALF_WIDTH = 290; // about half the popout's width
 
 /** Appears next to selected PDF text; one click sends it to the notes. */
 export default function SelectionPopout({
   x,
   y,
   color,
+  marker,
+  onMarker,
   fontLabel,
   fontFamily,
   onExport,
@@ -35,9 +42,28 @@ export default function SelectionPopout({
       role="dialog"
       aria-label="Highlight options"
     >
+      <div className="flex items-center gap-1.5" role="listbox" aria-label="Highlight color">
+        {MARKER_COLORS.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            role="option"
+            aria-selected={marker === c.value}
+            aria-label={`${c.label} highlight`}
+            title={`${c.label} highlight`}
+            onClick={() => onMarker(c.value)}
+            className="h-6 w-6 shrink-0 rounded-full border border-black/25"
+            style={{
+              background: c.value,
+              outline: marker === c.value ? "2px solid #111827" : "none",
+              outlineOffset: 2,
+            }}
+          />
+        ))}
+      </div>
       <div
         className="flex items-center gap-2 text-zinc-900"
-        title="Change the color and font in the toolbar above the PDF"
+        title="Change the text color and font in the toolbar above the notes"
       >
         <span
           className="h-6 w-6 shrink-0 rounded-full border border-black/25"

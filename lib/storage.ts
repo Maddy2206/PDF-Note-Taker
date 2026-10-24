@@ -230,6 +230,11 @@ export async function saveHighlight(h: Highlight): Promise<void> {
   await (await db()).put("highlights", h);
 }
 
+export async function deleteHighlights(ids: string[]): Promise<void> {
+  const tx = (await db()).transaction("highlights", "readwrite");
+  await Promise.all([...ids.map((i) => tx.store.delete(i)), tx.done]);
+}
+
 export async function loadScene(
   boardId: string,
 ): Promise<SceneRecord | undefined> {

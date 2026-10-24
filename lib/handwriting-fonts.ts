@@ -63,15 +63,37 @@ export function getFont(id: string): HandwritingFont {
   return HANDWRITING_FONTS.find((f) => f.id === id) ?? HANDWRITING_FONTS[0];
 }
 
-/** Used both as the note's ink color and as the marker color over the PDF text. */
-export const HIGHLIGHT_COLORS = [
+/** Text (ink) colors for the handwritten notes. */
+export const INK_COLORS = [
   { id: "black", value: "#111827", label: "Black" },
-  { id: "blue", value: "#2563eb", label: "Blue" },
+  { id: "gray", value: "#6b7280", label: "Gray" },
+  { id: "brown", value: "#78350f", label: "Brown" },
   { id: "red", value: "#dc2626", label: "Red" },
-  { id: "green", value: "#16a34a", label: "Green" },
-  { id: "purple", value: "#9333ea", label: "Purple" },
+  { id: "crimson", value: "#9f1239", label: "Crimson" },
+  { id: "pink", value: "#db2777", label: "Pink" },
   { id: "orange", value: "#ea580c", label: "Orange" },
+  { id: "gold", value: "#ca8a04", label: "Gold" },
+  { id: "lime", value: "#65a30d", label: "Lime" },
+  { id: "green", value: "#16a34a", label: "Green" },
+  { id: "teal", value: "#0d9488", label: "Teal" },
+  { id: "cyan", value: "#0891b2", label: "Cyan" },
+  { id: "blue", value: "#2563eb", label: "Blue" },
+  { id: "navy", value: "#1e3a8a", label: "Navy" },
+  { id: "indigo", value: "#4f46e5", label: "Indigo" },
+  { id: "purple", value: "#9333ea", label: "Purple" },
   { id: "white", value: "#ffffff", label: "White" },
+];
+
+/** Light marker colors for highlighting text on the PDF. */
+export const MARKER_COLORS = [
+  { id: "yellow", value: "#fde68a", label: "Yellow" },
+  { id: "lime", value: "#d9f99d", label: "Lime" },
+  { id: "mint", value: "#a7f3d0", label: "Mint" },
+  { id: "sky", value: "#bae6fd", label: "Sky" },
+  { id: "lavender", value: "#ddd6fe", label: "Lavender" },
+  { id: "pink", value: "#fbcfe8", label: "Pink" },
+  { id: "peach", value: "#fed7aa", label: "Peach" },
+  { id: "gray", value: "#e5e7eb", label: "Gray" },
 ];
 
 /** White text and highlights would vanish on white paper, so they get a visible stand-in. */

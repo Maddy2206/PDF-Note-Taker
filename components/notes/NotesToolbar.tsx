@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { HIGHLIGHT_COLORS, type FontId } from "@/lib/handwriting-fonts";
+import { INK_COLORS, type FontId } from "@/lib/handwriting-fonts";
 import FontPicker from "@/components/ui/FontPicker";
 
 export type NoteTool =
@@ -135,9 +135,9 @@ export default function NotesToolbar({
             role="listbox"
             aria-label="Ink color"
             className="absolute left-0 top-[38px] z-40 border-2 border-[var(--color-text)] bg-[var(--color-bg)] p-2 shadow-[var(--shadow-lg)]"
-            style={{ display: "grid", gridTemplateColumns: "repeat(4, 32px)", gap: 6 }}
+            style={{ display: "grid", gridTemplateColumns: "repeat(6, 28px)", gap: 6 }}
           >
-            {HIGHLIGHT_COLORS.map((c) => (
+            {INK_COLORS.map((c) => (
               <button
                 key={c.id}
                 role="option"
@@ -150,8 +150,8 @@ export default function NotesToolbar({
                 }}
                 className="border border-black/30"
                 style={{
-                  width: 32,
-                  height: 32,
+                  width: 28,
+                  height: 28,
                   padding: 0,
                   background: c.value,
                   cursor: "pointer",

@@ -22,6 +22,12 @@ async function loadPdfjs() {
   return pdfjs;
 }
 
+/** Old highlights used strong colors; they stay faint, while the newer light markers are drawn fuller. */
+function isDark(hex: string) {
+  const n = parseInt(hex.slice(1), 16);
+  return 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255) < 190;
+}
+
 function PageView({
   pdf,
   pageNumber,
@@ -100,7 +106,7 @@ function PageView({
                 width: `${r.w * 100}%`,
                 height: `${r.h * 100}%`,
                 background: isWhite(h.color) ? "#9ca3af" : h.color,
-                opacity: 0.35,
+                opacity: isDark(h.color) ? 0.35 : 0.75,
               }}
             />
           )),
@@ -238,13 +244,20 @@ export default function PdfViewer({
   onPageChange,
   ink,
   fontId,
+  marker,
+  onMarker,
+  onRemoveHighlight,
 }: {
   blob: Blob;
   highlights?: Highlight[];
   initialZoom?: number | null;
   onZoomChange?: (zoom: number | null) => void;
   onLoaded?: (pageCount: number) => void;
-  onExport?: (sel: PendingSelection, color: string, font: FontId) => void;
+  onExport?: (sel: PendingSelection, color: string, marker: string, font: FontId) => void;
+  onRemoveHighlight?: (highlightId: string) => void;
+  /** Light color of the marker drawn over the PDF text. */
+  marker: string;
+  onMarker: (c: string) => void;
   onImportDiagram?: (img: DiagramImage) => void | Promise<void>;
   initialPage?: number;
   onPageChange?: (page: number) => void;
@@ -279,6 +292,8 @@ export default function PdfViewer({
   const [pageDraft, setPageDraft] = useState<string | null>(null);
   const [showThumbs, setShowThumbs] = useState(true);
   const [pending, setPending] = useState<{ sel: PendingSelection; x: number; y: number } | null>(null);
+  // A click on an existing highlight offers to remove it.
+  const [hit, setHit] = useState<{ id: string; x: number; y: number } | null>(null);
 
   // Every page's size at scale 1: gives "fit to width" and keeps page heights right
   // from the first frame after a zoom (so the reading position can be restored exactly).
@@ -459,11 +474,30 @@ export default function PdfViewer({
     onZoomChange?.(clamped);
   }
 
-  function handleSelect() {
+  function handleSelect(e: React.MouseEvent) {
     const container = containerRef.current;
     if (!container) return;
+    const { clientX, clientY } = e;
     // let the browser finish updating the selection first
-    setTimeout(() => setPending(readSelection(container)), 0);
+    setTimeout(() => {
+      const sel = readSelection(container);
+      setPending(sel);
+      setHit(sel ? null : findHighlight(clientX, clientY));
+    }, 0);
+  }
+
+  function findHighlight(clientX: number, clientY: number) {
+    for (const h of highlights) {
+      const pageEl = containerRef.current?.querySelector<HTMLElement>(`[data-page="${h.page}"]`);
+      if (!pageEl) continue;
+      const pr = pageEl.getBoundingClientRect();
+      const px = (clientX - pr.left) / pr.width;
+      const py = (clientY - pr.top) / pr.height;
+      if (h.rects.some((r) => px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h)) {
+        return { id: h.id, x: clientX, y: clientY + 14 };
+      }
+    }
+    return null;
   }
 
   function dismiss() {
@@ -609,7 +643,10 @@ export default function PdfViewer({
     <div
       ref={containerRef}
       onMouseUp={handleSelect}
-      onScroll={() => pending && setPending(null)}
+      onScroll={() => {
+        if (pending) setPending(null);
+        if (hit) setHit(null);
+      }}
       className="min-h-0 min-w-0 flex-1 overflow-auto bg-zinc-200 p-4"
     >
       {Array.from({ length: pdf.numPages }, (_, i) => (
@@ -623,16 +660,49 @@ export default function PdfViewer({
           highlights={highlights.filter((h) => h.page === i + 1)}
         />
       ))}
+      {hit && !pending && (
+        <div
+          onMouseDown={(e) => e.preventDefault()}
+          style={{
+            left: Math.min(Math.max(hit.x, 90), window.innerWidth - 90),
+            top: Math.min(hit.y, window.innerHeight - 70),
+          }}
+          className="fixed z-40 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-zinc-200 bg-white p-2 text-base text-black shadow-xl"
+          role="dialog"
+          aria-label="Highlight actions"
+        >
+          <button
+            type="button"
+            onClick={() => {
+              onRemoveHighlight?.(hit.id);
+              setHit(null);
+            }}
+            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+          >
+            Remove highlight &amp; note
+          </button>
+          <button
+            type="button"
+            onClick={() => setHit(null)}
+            aria-label="Dismiss"
+            className="px-1.5 text-2xl leading-none text-zinc-500 hover:text-zinc-800"
+          >
+            &times;
+          </button>
+        </div>
+      )}
       {pending && (
         <SelectionPopout
           x={pending.x}
           y={pending.y}
           color={ink}
+          marker={marker}
+          onMarker={onMarker}
           fontLabel={getFont(fontId).label}
           fontFamily={getFont(fontId).family}
           onDismiss={dismiss}
           onExport={() => {
-            onExport?.(pending.sel, ink, fontId);
+            onExport?.(pending.sel, ink, marker, fontId);
             dismiss();
           }}
         />

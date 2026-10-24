@@ -11,6 +11,7 @@ import {
   listHighlights,
   removeDoc,
   saveHighlight,
+  deleteHighlights,
   updateBoard,
   updateDoc,
 } from "@/lib/storage";
@@ -18,7 +19,7 @@ import { PAPERS, paperColorOf } from "@/lib/paper";
 import PageStyleMenu from "@/components/notes/PageStyleMenu";
 import type { Board, Highlight, PdfDoc } from "@/lib/types";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
-import { HANDWRITING_FONTS, HIGHLIGHT_COLORS, type FontId } from "@/lib/handwriting-fonts";
+import { HANDWRITING_FONTS, INK_COLORS, MARKER_COLORS, type FontId } from "@/lib/handwriting-fonts";
 import dynamic from "next/dynamic";
 import PdfViewer, { type PendingSelection } from "@/components/pdf/PdfViewer";
 import PdfTabs from "@/components/pdf/PdfTabs";
@@ -46,9 +47,9 @@ export default function BoardPage() {
   const [ink, setInk] = useState(() => {
     try {
       const c = localStorage.getItem("pdfnote.ink");
-      if (c && HIGHLIGHT_COLORS.some((x) => x.value === c)) return c;
+      if (c && INK_COLORS.some((x) => x.value === c)) return c;
     } catch {}
-    return HIGHLIGHT_COLORS[0].value;
+    return INK_COLORS[0].value;
   });
   const [fontId, setFontId] = useState<FontId>(() => {
     try {
@@ -57,6 +58,17 @@ export default function BoardPage() {
     } catch {}
     return "caveat";
   });
+  const [marker, setMarker] = useState(() => {
+    try {
+      const c = localStorage.getItem("pdfnote.marker");
+      if (c && MARKER_COLORS.some((x) => x.value === c)) return c;
+    } catch {}
+    return MARKER_COLORS[0].value;
+  });
+  function pickMarker(c: string) {
+    setMarker(c);
+    try { localStorage.setItem("pdfnote.marker", c); } catch {}
+  }
   function pickInk(c: string) {
     setInk(c);
     try { localStorage.setItem("pdfnote.ink", c); } catch {}
@@ -174,32 +186,49 @@ export default function BoardPage() {
     if (activeId === docId) selectDoc(rest[0].id);
   }
 
-  async function exportToNotes(sel: PendingSelection, color: string, font: FontId) {
+  async function exportToNotes(sel: PendingSelection, color: string, marker: string, font: FontId) {
     if (!api) {
       setNotice("The notes aren't ready yet. Try again in a moment.");
       return;
     }
     const { addHandwrittenNote } = await import("@/components/notes/handwritten");
+    let noteId: string | undefined;
+    try {
+      noteId = (await addHandwrittenNote(api, { text: sel.text, font, color })).id;
+    } catch (e) {
+      console.error("addHandwrittenNote failed", e);
+      setNotice("Couldn't add the note to the board. Please try again.");
+      return;
+    }
     const created: Highlight[] = sel.pages.map((p) => ({
       id: crypto.randomUUID(),
       boardId: id,
       docId: activeId ?? id,
       page: p.page,
       rects: p.rects,
-      color,
+      color: marker,
       text: sel.text,
       font,
+      noteId,
     }));
     await Promise.all(created.map(saveHighlight));
     setHighlights((prev) => [...prev, ...created]);
-    try {
-      await addHandwrittenNote(api, { text: sel.text, font, color });
-    } catch (e) {
-      console.error("addHandwrittenNote failed", e);
-      setNotice("Couldn't add the note to the board. Please try again.");
-      return;
-    }
     if (!board?.paneVisibility.notes) save({ paneVisibility: { pdf: true, notes: true } });
+  }
+
+  /** Removes a highlight from the PDF along with the note it exported to the board. */
+  async function removeHighlight(highlightId: string) {
+    const h = highlights.find((x) => x.id === highlightId);
+    if (!h) return;
+    // a selection spanning pages is several highlights sharing one note
+    const group = h.noteId ? highlights.filter((x) => x.noteId === h.noteId) : [h];
+    const noteIds = h.noteId ? [h.noteId] : [];
+    await deleteHighlights(group.map((x) => x.id));
+    setHighlights((hs) => hs.filter((x) => !group.includes(x)));
+    if (api && noteIds.length) {
+      const { removeNote } = await import("@/components/notes/handwritten");
+      for (const n of noteIds) removeNote(api, n);
+    }
   }
 
   async function importDiagram(img: { dataURL: string; width: number; height: number }) {
@@ -363,6 +392,9 @@ export default function BoardPage() {
                     initialZoom={activeDoc.zoom}
                     onZoomChange={(zoom) => patchDoc(activeDoc.id, { zoom })}
                     onExport={exportToNotes}
+                    onRemoveHighlight={removeHighlight}
+                    marker={marker}
+                    onMarker={pickMarker}
                     onImportDiagram={importDiagram}
                     initialPage={activeDoc.lastPage}
                     onPageChange={(lastPage) => patchDoc(activeDoc.id, { lastPage })}
