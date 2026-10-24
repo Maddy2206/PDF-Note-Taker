@@ -20,7 +20,7 @@ Client-only Next.js (App Router) app. There is no backend, API or authentication
 2. `PdfViewer` renders pages with pdf.js (legacy build, worker resolved via `new URL(...)`).
 3. Selecting text opens `SelectionPopout` (marker colour, font). On export, `lib/note-image.ts` draws the text on a canvas in the handwriting font; the PNG is inserted into the Excalidraw scene at a position from `lib/placement.ts`, and a `Highlight` record links to it by `noteId`.
 4. Diagram clip: `DiagramSelect` + `lib/diagram-region.ts` rasterize a page region into an image element. The image's `customData.source` (`NoteSource`: docId, page, rect in 0-1 page units) records where it came from.
-5. Go to source: selecting a note makes `NotesCanvas` call `lib/note-source.ts` (`resolveNoteSource`: diagram -> `customData.source`; text note -> its `Highlight` by `noteId`). The button calls `jumpToSource` in the board page, which switches the PDF tab, shows the pane and passes `jump` to `PdfViewer`; that scrolls to the rect and flashes it.
+5. Go to source: selecting a note makes `NotesCanvas` call `lib/note-source.ts` (`resolveNoteSource`: diagram -> `customData.source`; text note -> `customData.source` if stamped, else the union box of its `Highlight` by `noteId`; removing a highlight stamps the source onto the note first). The button calls `jumpToSource` in the board page, which switches the PDF tab, shows the pane and passes `jump` to `PdfViewer`; that scrolls to the rect and flashes it.
 5. `NotesCanvas` (loaded with `dynamic()`) autosaves the whole scene to IndexedDB on an 800 ms debounce.
 6. Download: `lib/export-pdf.ts` (loaded on demand) draws the paper and scene per notebook page and writes a JPEG-per-page A4 PDF with jsPDF.
 

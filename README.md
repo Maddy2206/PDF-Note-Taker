@@ -19,7 +19,7 @@ Open <http://localhost:3000>. A sample PDF is at `public/sample.pdf` (also serve
 
 1. On the dashboard, click **Create board**, name it and upload one or more PDFs (a board can hold all the lectures and readings for a topic). Files that are not PDFs (by type/extension and the `%PDF-` header) are rejected. Switch between a board's PDFs with the tabs above the PDF; **+ Add PDF** adds more, double-click a tab to rename it.
 2. Drag the divider between the PDF and the notes. Use the **PDF** and **Notes** buttons at the top to close or reopen a pane. Zoom the PDF with the **-** / **+** / **Fit width** controls.
-3. Select text in the PDF, pick a color and handwriting font, and click **Export to board**. Click a handwritten note to move, resize or delete it; double-click it to edit the text. Click a highlight on the PDF and choose **Remove highlight & note** to remove both.
+3. Select text in the PDF, pick a color and handwriting font, and click **Export to board**. Click a handwritten note to move, resize or delete it; double-click it to edit the text. Click a highlight on the PDF and choose **Remove highlight** or **Remove note**; they are separate.
 4. Click **Clip diagram**, drag a dotted box around a figure, then **Import to notes**.
 5. Select any note (text or diagram) and click the **Go to source** chip that appears next to it after a moment (it does not show while you drag, write or edit, and fades after a few seconds). The PDF switches to the right tab, scrolls to the excerpt or figure and flashes it.
 6. Draw and write with the Excalidraw tools. **Ctrl+Z** undoes, **Ctrl+Y** redoes. Switch the paper between **Lined**, **Dotted**, **Grid** and **Blank**, with 10 page colors.

@@ -262,6 +262,8 @@ export default function PdfViewer({
   marker,
   onMarker,
   onRemoveHighlight,
+  onRemoveNote,
+  hasNote,
   jump,
   onJumpDone,
 }: {
@@ -272,6 +274,8 @@ export default function PdfViewer({
   onLoaded?: (pageCount: number) => void;
   onExport?: (sel: PendingSelection, color: string, marker: string, font: FontId) => void;
   onRemoveHighlight?: (highlightId: string) => void;
+  onRemoveNote?: (highlightId: string) => void;
+  hasNote?: (highlightId: string) => boolean;
   /** Scroll to this spot and flash it (a jump from a note to its source). */
   jump?: { page: number; rect: HighlightRect; nonce: number } | null;
   onJumpDone?: () => void;
@@ -731,8 +735,20 @@ export default function PdfViewer({
             }}
             className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
           >
-            Remove highlight &amp; note
+            Remove highlight
           </button>
+          {hasNote?.(hit.id) && (
+            <button
+              type="button"
+              onClick={() => {
+                onRemoveNote?.(hit.id);
+                setHit(null);
+              }}
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+            >
+              Remove note
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setHit(null)}

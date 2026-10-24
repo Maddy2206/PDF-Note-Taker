@@ -4,6 +4,7 @@ import type {
   ExcalidrawImperativeAPI,
 } from "@excalidraw/excalidraw/types";
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
+import type { NoteSource } from "@/lib/types";
 import { renderNoteImage } from "@/lib/note-image";
 import { nextFreeSpot } from "@/lib/placement";
 import { revealElement } from "./reveal";
@@ -13,6 +14,8 @@ export interface NoteMeta {
   text: string;
   font: string;
   color: string;
+  /** Where on the PDF the note came from; kept on the note so it outlives the highlight. */
+  source?: NoteSource;
 }
 
 export function getNoteMeta(el: ExcalidrawElement): NoteMeta | null {
@@ -85,6 +88,8 @@ export async function updateHandwrittenNote(
 ) {
   const rendered = await renderNoteImage(meta.text, meta.font, meta.color);
   const fileId = await addImageFile(api, rendered.dataURL);
+  const prev = api.getSceneElementsIncludingDeleted().find((e) => e.id === elementId);
+  const source = meta.source ?? (prev && getNoteMeta(prev)?.source);
   patchElement(
     api,
     elementId,
@@ -94,7 +99,7 @@ export async function updateHandwrittenNote(
       height: rendered.height,
       opacity: 100,
       updated: Date.now(),
-      customData: { kind: "handwritten-note", ...meta },
+      customData: { kind: "handwritten-note", ...meta, ...(source && { source }) },
     },
     CaptureUpdateAction.IMMEDIATELY,
   );
@@ -103,6 +108,14 @@ export async function updateHandwrittenNote(
 /** Hides or shows a note without recording an undo step (used while it is edited in place). */
 export function setNoteHidden(api: ExcalidrawImperativeAPI, elementId: string, hidden: boolean) {
   patchElement(api, elementId, { opacity: hidden ? 0 : 100 }, CaptureUpdateAction.NEVER);
+}
+
+/** Records where a note came from on the note itself (no undo step), so it keeps its source when the highlight goes. */
+export function stampNoteSource(api: ExcalidrawImperativeAPI, elementId: string, source: NoteSource) {
+  const el = api.getSceneElementsIncludingDeleted().find((e) => e.id === elementId);
+  const meta = el && getNoteMeta(el);
+  if (!el || !meta || meta.source) return;
+  patchElement(api, elementId, { customData: { ...meta, source } }, CaptureUpdateAction.NEVER);
 }
 
 /** Deletes a note (undoable). */

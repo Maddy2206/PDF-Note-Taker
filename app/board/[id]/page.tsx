@@ -18,7 +18,7 @@ import {
 import { PAPERS, paperColorOf } from "@/lib/paper";
 import PageStyleMenu from "@/components/notes/PageStyleMenu";
 import type { Board, Highlight, NoteSource, PdfDoc } from "@/lib/types";
-import { resolveNoteSource } from "@/lib/note-source";
+import { resolveNoteSource, sourceOf } from "@/lib/note-source";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { HANDWRITING_FONTS, INK_COLORS, MARKER_COLORS, type FontId } from "@/lib/handwriting-fonts";
 import dynamic from "next/dynamic";
@@ -218,19 +218,33 @@ export default function BoardPage() {
     if (!board?.paneVisibility.notes) save({ paneVisibility: { pdf: true, notes: true } });
   }
 
-  /** Removes a highlight from the PDF along with the note it exported to the board. */
+  /** Removes a highlight from the PDF and leaves its note on the board. */
   async function removeHighlight(highlightId: string) {
     const h = highlights.find((x) => x.id === highlightId);
     if (!h) return;
     // a selection spanning pages is several highlights sharing one note
     const group = h.noteId ? highlights.filter((x) => x.noteId === h.noteId) : [h];
-    const noteIds = h.noteId ? [h.noteId] : [];
+    if (api && h.noteId) {
+      const { stampNoteSource } = await import("@/components/notes/handwritten");
+      const first = group.filter((x) => x.rects.length).sort((a, b) => a.page - b.page)[0];
+      if (first) stampNoteSource(api, h.noteId, sourceOf(first));
+    }
     await deleteHighlights(group.map((x) => x.id));
     setHighlights((hs) => hs.filter((x) => !group.includes(x)));
-    if (api && noteIds.length) {
-      const { removeNote } = await import("@/components/notes/handwritten");
-      for (const n of noteIds) removeNote(api, n);
-    }
+  }
+
+  /** The highlight's note still on the board (not deleted). */
+  function hasNote(highlightId: string) {
+    const noteId = highlights.find((x) => x.id === highlightId)?.noteId;
+    return !!noteId && !!api?.getSceneElements().some((e) => e.id === noteId && !e.isDeleted);
+  }
+
+  /** Deletes the note a highlight exported (undoable); the highlight stays, so Go to source survives an undo. */
+  async function removeHighlightNote(highlightId: string) {
+    const noteId = highlights.find((x) => x.id === highlightId)?.noteId;
+    if (!api || !noteId) return;
+    const { removeNote } = await import("@/components/notes/handwritten");
+    removeNote(api, noteId);
   }
 
   const [jump, setJump] = useState<{ page: number; rect: NoteSource["rect"]; nonce: number } | null>(null);
@@ -404,6 +418,8 @@ export default function BoardPage() {
                     onZoomChange={(zoom) => patchDoc(activeDoc.id, { zoom })}
                     onExport={exportToNotes}
                     onRemoveHighlight={removeHighlight}
+                    onRemoveNote={removeHighlightNote}
+                    hasNote={hasNote}
                     marker={marker}
                     onMarker={pickMarker}
                     onImportDiagram={importDiagram}
