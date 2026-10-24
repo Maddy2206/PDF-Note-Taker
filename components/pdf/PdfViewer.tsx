@@ -35,6 +35,7 @@ function PageView({
   scale,
   base,
   onClip,
+  flash,
 }: {
   pdf: PDFDocumentProxy;
   pageNumber: number;
@@ -43,6 +44,8 @@ function PageView({
   /** The page's size at scale 1, so its height is right from the first paint. */
   base: { w: number; h: number };
   onClip?: (img: DiagramImage) => void | Promise<void>;
+  /** Briefly outlines this area (0-1 page units) after a jump from a note. */
+  flash?: HighlightRect;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -112,6 +115,18 @@ function PageView({
           )),
         )}
       </div>
+      {flash && (
+        <div
+          aria-hidden
+          className="source-flash pointer-events-none absolute"
+          style={{
+            left: `${flash.x * 100}%`,
+            top: `${flash.y * 100}%`,
+            width: `${flash.w * 100}%`,
+            height: `${flash.h * 100}%`,
+          }}
+        />
+      )}
       <div
         ref={textRef}
         className="textLayer absolute left-0 top-0"
@@ -247,6 +262,8 @@ export default function PdfViewer({
   marker,
   onMarker,
   onRemoveHighlight,
+  jump,
+  onJumpDone,
 }: {
   blob: Blob;
   highlights?: Highlight[];
@@ -255,6 +272,9 @@ export default function PdfViewer({
   onLoaded?: (pageCount: number) => void;
   onExport?: (sel: PendingSelection, color: string, marker: string, font: FontId) => void;
   onRemoveHighlight?: (highlightId: string) => void;
+  /** Scroll to this spot and flash it (a jump from a note to its source). */
+  jump?: { page: number; rect: HighlightRect; nonce: number } | null;
+  onJumpDone?: () => void;
   /** Light color of the marker drawn over the PDF text. */
   marker: string;
   onMarker: (c: string) => void;
@@ -393,6 +413,37 @@ export default function PdfViewer({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pdf, baseWidth]);
+
+  // Jump from a note: scroll to the exact spot once page sizes are known, then flash it.
+  const [flash, setFlash] = useState<{ page: number; rect: HighlightRect } | null>(null);
+  const onJumpDoneRef = useRef(onJumpDone);
+  useEffect(() => {
+    onJumpDoneRef.current = onJumpDone;
+  });
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!jump || !el || !pdf || !baseWidth) return;
+    resumeCancelled.current = true;
+    const goto = () => {
+      const target = el.querySelector<HTMLElement>(`[data-page="${jump.page}"]`);
+      if (!target) return;
+      const box = target.getBoundingClientRect();
+      el.scrollTop =
+        box.top - el.getBoundingClientRect().top + el.scrollTop + jump.rect.y * box.height - el.clientHeight / 3;
+      updateCurrent();
+    };
+    const timers = [0, 100, 250].map((ms) => setTimeout(goto, ms));
+    setFlash({ page: jump.page, rect: jump.rect });
+    const done = setTimeout(() => {
+      setFlash(null);
+      onJumpDoneRef.current?.();
+    }, 2200);
+    return () => {
+      timers.forEach(clearTimeout);
+      clearTimeout(done);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jump?.nonce, pdf, baseWidth]);
 
   // Report the most visible page, debounced.
   useEffect(() => {
@@ -658,6 +709,7 @@ export default function PdfViewer({
           base={sizes?.[i] ?? sizes?.[0] ?? { w: 600, h: 800 }}
           onClip={clipMode ? onImportDiagram : undefined}
           highlights={highlights.filter((h) => h.page === i + 1)}
+          flash={flash?.page === i + 1 ? flash.rect : undefined}
         />
       ))}
       {hit && !pending && (

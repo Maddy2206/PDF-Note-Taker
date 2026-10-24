@@ -147,3 +147,14 @@ html { scroll-behavior: smooth; }
 .notes-canvas .excalidraw .layer-ui__wrapper {
   display: none !important;
 }
+
+/* Outline pulsed on the PDF after jumping to a note's source. */
+.source-flash {
+  outline: 3px solid var(--color-accent-800);
+  outline-offset: 3px;
+  animation: source-flash 2.2s ease-out forwards;
+}
+@keyframes source-flash {
+  0%, 60% { opacity: 1; background: color-mix(in srgb, var(--color-accent-800) 18%, transparent); }
+  100% { opacity: 0; background: transparent; }
+}

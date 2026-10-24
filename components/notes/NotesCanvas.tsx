@@ -22,7 +22,7 @@ import {
   updateHandwrittenNote,
   type NoteMeta,
 } from "./handwritten";
-import type { Paper, SceneRecord } from "@/lib/types";
+import type { NoteSource, Paper, SceneRecord } from "@/lib/types";
 
 const SAVE_DELAY_MS = 800;
 
@@ -59,6 +59,27 @@ function viewForPage(width: number, index: number): PaperView {
   return { zoom, scrollX: (width / zoom - PAGE_W) / 2, scrollY: 24 / zoom - pageTop(index) };
 }
 
+const CHIP = { w: 100, h: 28, gap: 8 };
+
+/** Places the chip above the note's top-right corner (below it if there is no room), inside the pane. */
+function chipStyle(
+  box: { x: number; y: number; w: number; h: number },
+  view: PaperView,
+  pane: { w: number; h: number },
+) {
+  const right = (box.x + box.w + view.scrollX) * view.zoom;
+  const top = (box.y + view.scrollY) * view.zoom;
+  const bottom = top + box.h * view.zoom;
+  let y = top - CHIP.h - CHIP.gap;
+  if (y < 4) y = bottom + CHIP.gap;
+  const maxX = Math.max(4, pane.w - CHIP.w - 4);
+  const maxY = Math.max(4, pane.h - CHIP.h - 4);
+  return {
+    left: Math.min(Math.max(right - CHIP.w, 4), maxX),
+    top: Math.min(Math.max(y, 4), maxY),
+  };
+}
+
 export default function NotesCanvas({
   boardId,
   onApi,
@@ -71,6 +92,8 @@ export default function NotesCanvas({
   onInk,
   fontId,
   onFont,
+  getSource,
+  onJumpToSource,
 }: {
   boardId: string;
   onApi?: (api: ExcalidrawImperativeAPI) => void;
@@ -86,13 +109,21 @@ export default function NotesCanvas({
   onInk: (color: string) => void;
   fontId: FontId;
   onFont: (font: FontId) => void;
+  /** Where a board element came from in the PDFs, or null if unknown. */
+  getSource?: (element: { id: string; customData?: Record<string, unknown> }) => NoteSource | null;
+  onJumpToSource?: (source: NoteSource) => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [view, setView] = useState<PaperView>({ scrollX: 0, scrollY: 0, zoom: 1 });
   const [pages, setPages] = useState(notePages ?? 1);
   const pagesRef = useRef(notePages ?? 1);
-  const props = useRef({ notePages, onNotePagesChange, onSaveState });
+  const props = useRef({ notePages, onNotePagesChange, onSaveState, getSource });
+  // The selected note's source and where it sits; the chip shows once the selection settles.
+  const [source, setSource] = useState<{ src: NoteSource; box: { x: number; y: number; w: number; h: number } } | null>(null);
+  const [chipVisible, setChipVisible] = useState(false);
+  const chipTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const chipSel = useRef<{ id: string; geo: string; moved: boolean } | null>(null);
   const [initial, setInitial] = useState<SceneRecord | null | undefined>(undefined);
   const [startView, setStartView] = useState<PaperView | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -104,8 +135,13 @@ export default function NotesCanvas({
   const [locked, setLocked] = useState(false);
 
   useEffect(() => {
-    props.current = { notePages, onNotePagesChange, onSaveState };
+    props.current = { notePages, onNotePagesChange, onSaveState, getSource };
   });
+
+  useEffect(() => {
+    const timers = chipTimers;
+    return () => timers.current.forEach(clearTimeout);
+  }, []);
 
   // When the pane changes width (PDF / Split / Notes), re-center the current page in it.
   const lastWidth = useRef<number | null>(null);
@@ -312,6 +348,40 @@ export default function NotesCanvas({
         ? elements.find((e) => e.id === selectedIds[0] && !e.isDeleted)
         : undefined;
     const meta = sel ? getNoteMeta(sel) : null;
+    const src = sel ? (props.current.getSource?.(sel as { id: string; customData?: Record<string, unknown> }) ?? null) : null;
+    const geo = sel ? `${sel.x},${sel.y},${sel.width},${sel.height}` : "";
+    const last = chipSel.current;
+    if (!sel || !src) {
+      chipSel.current = null;
+      chipTimers.current.forEach(clearTimeout);
+      chipTimers.current = [];
+      setChipVisible(false);
+      setSource((prev) => (prev ? null : prev));
+    } else if (!last || last.id !== sel.id) {
+      // a new selection: show the chip once it has stayed still for a moment, then fade it
+      chipSel.current = { id: sel.id, geo, moved: false };
+      chipTimers.current.forEach(clearTimeout);
+      chipTimers.current = [
+        setTimeout(() => setChipVisible(true), 400),
+        setTimeout(() => setChipVisible(false), 4400),
+      ];
+      setChipVisible(false);
+    } else if (last.geo !== geo) {
+      // dragging or resizing: no chip until the note is selected again
+      last.geo = geo;
+      last.moved = true;
+      chipTimers.current.forEach(clearTimeout);
+      chipTimers.current = [];
+      setChipVisible(false);
+    }
+    if (sel && src) {
+      setSource((prev) =>
+        prev && prev.src.docId === src.docId && prev.src.page === src.page && prev.src.rect.x === src.rect.x &&
+        prev.src.rect.y === src.rect.y && prev.box.x === sel.x && prev.box.y === sel.y && prev.box.w === sel.width && prev.box.h === sel.height
+          ? prev
+          : { src, box: { x: sel.x, y: sel.y, w: sel.width, h: sel.height } },
+      );
+    }
     setSelectedNote((prev) => {
       if (!sel || !meta) return prev ? null : prev;
       if (prev && prev.id === sel.id && prev.meta === meta) return prev;
@@ -445,6 +515,21 @@ export default function NotesCanvas({
               >
                 Couldn&apos;t save your notes. Browser storage may be full or blocked.
               </p>
+            )}
+            {source && onJumpToSource && chipVisible && !editing && !locked && tool === "selection" && (
+              <button
+                type="button"
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={() => {
+                  setChipVisible(false);
+                  onJumpToSource(source.src);
+                }}
+                title="Jump to where this note came from in the PDF"
+                style={chipStyle(source.box, view, size)}
+                className="absolute z-20 whitespace-nowrap border border-[var(--color-divider)] bg-white px-2 py-1 text-xs shadow hover:bg-[var(--color-surface)]"
+              >
+                Go to source
+              </button>
             )}
             {editing && (
               <InlineNoteEditor

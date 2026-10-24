@@ -2,6 +2,7 @@ import { CaptureUpdateAction, convertToExcalidrawElements } from "@excalidraw/ex
 import type { BinaryFileData, ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import { nextFreeSpot } from "@/lib/placement";
+import type { NoteSource } from "@/lib/types";
 import { fitWidth } from "@/lib/diagram-region";
 import { revealElement } from "./reveal";
 
@@ -9,6 +10,7 @@ import { revealElement } from "./reveal";
 export function addDiagramImage(
   api: ExcalidrawImperativeAPI,
   img: { dataURL: string; width: number; height: number },
+  source?: NoteSource,
 ) {
   const id = crypto.randomUUID() as BinaryFileData["id"];
   api.addFiles([
@@ -20,7 +22,7 @@ export function addDiagramImage(
   const [el] = convertToExcalidrawElements([
     { type: "image", x, y, width: size.width, height: size.height, fileId: id, status: "saved" },
   ]);
-  const diagram = { ...el, customData: { kind: "diagram" } } as ExcalidrawElement;
+  const diagram = { ...el, customData: { kind: "diagram", source } } as ExcalidrawElement;
   api.updateScene({
     elements: [...existing, diagram] as never,
     captureUpdate: CaptureUpdateAction.IMMEDIATELY,

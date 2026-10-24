@@ -47,6 +47,13 @@ export interface HighlightRect {
   h: number;
 }
 
+/** Where a note came from in the PDF. Rect is in 0-1 page units. */
+export interface NoteSource {
+  docId: string;
+  page: number;
+  rect: HighlightRect;
+}
+
 /** A highlight on the PDF. Rects are in 0-1 page units so they survive zoom. */
 export interface Highlight {
   id: string;

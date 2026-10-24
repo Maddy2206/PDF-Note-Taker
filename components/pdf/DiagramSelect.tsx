@@ -8,6 +8,8 @@ export interface DiagramImage {
   dataURL: string;
   width: number;
   height: number;
+  /** Where on the PDF the diagram was clipped from (0-1 fractions of the page). */
+  source?: { page: number; rect: Region };
 }
 
 /** Re-renders just the region (0-1 fractions of the page) at high resolution to a PNG. */
@@ -119,7 +121,8 @@ export default function DiagramSelect({
             onClick={async () => {
               setBusy(true);
               try {
-                await onImport(await renderRegion(pdf, pageNumber, region));
+                const img = await renderRegion(pdf, pageNumber, region);
+                await onImport({ ...img, source: { page: pageNumber, rect: region } });
                 setRegion(null);
               } catch (err) {
                 console.error("renderRegion failed", err);

@@ -17,11 +17,13 @@ import {
 } from "@/lib/storage";
 import { PAPERS, paperColorOf } from "@/lib/paper";
 import PageStyleMenu from "@/components/notes/PageStyleMenu";
-import type { Board, Highlight, PdfDoc } from "@/lib/types";
+import type { Board, Highlight, NoteSource, PdfDoc } from "@/lib/types";
+import { resolveNoteSource } from "@/lib/note-source";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { HANDWRITING_FONTS, INK_COLORS, MARKER_COLORS, type FontId } from "@/lib/handwriting-fonts";
 import dynamic from "next/dynamic";
 import PdfViewer, { type PendingSelection } from "@/components/pdf/PdfViewer";
+import type { DiagramImage } from "@/components/pdf/DiagramSelect";
 import PdfTabs from "@/components/pdf/PdfTabs";
 import SplitLayout from "@/components/workspace/SplitLayout";
 
@@ -231,14 +233,23 @@ export default function BoardPage() {
     }
   }
 
-  async function importDiagram(img: { dataURL: string; width: number; height: number }) {
+  const [jump, setJump] = useState<{ page: number; rect: NoteSource["rect"]; nonce: number } | null>(null);
+
+  function jumpToSource(src: NoteSource) {
+    if (src.docId !== activeId) selectDoc(src.docId);
+    if (!board?.paneVisibility.pdf) save({ paneVisibility: { pdf: true, notes: board?.paneVisibility.notes ?? true } });
+    setJump({ page: src.page, rect: src.rect, nonce: Date.now() });
+  }
+
+  async function importDiagram(img: DiagramImage) {
     if (!api) {
       setNotice("The notes aren't ready yet. Try again in a moment.");
       return;
     }
     try {
       const { addDiagramImage } = await import("@/components/notes/diagram");
-      addDiagramImage(api, img);
+      const { source, ...image } = img;
+      addDiagramImage(api, image, source && { docId: activeId ?? id, ...source });
     } catch (e) {
       console.error("addDiagramImage failed", e);
       setNotice("Couldn't add the diagram to the board. Please try again.");
@@ -396,6 +407,8 @@ export default function BoardPage() {
                     marker={marker}
                     onMarker={pickMarker}
                     onImportDiagram={importDiagram}
+                    jump={jump}
+                    onJumpDone={() => setJump(null)}
                     initialPage={activeDoc.lastPage}
                     onPageChange={(lastPage) => patchDoc(activeDoc.id, { lastPage })}
                     onLoaded={(pageCount) => patchDoc(activeDoc.id, { pageCount })}
@@ -421,6 +434,10 @@ export default function BoardPage() {
               onInk={pickInk}
               fontId={fontId}
               onFont={pickFont}
+              getSource={(el) =>
+                resolveNoteSource(el, highlights, docs.map((d) => d.id))
+              }
+              onJumpToSource={jumpToSource}
             />
           }
         />
