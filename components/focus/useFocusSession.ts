@@ -106,8 +106,7 @@ export function useFocusSession(boardId: string) {
       setOverKey(endsAt);
       chime();
     };
-    const wait = endsAt - Date.now();
-    const t = wait <= 0 ? setTimeout(check, 0) : setTimeout(check, wait);
+    const t = setTimeout(check, Math.max(0, endsAt - Date.now()));
     document.addEventListener("visibilitychange", check);
     return () => {
       clearTimeout(t);
@@ -204,9 +203,9 @@ export function useFocusSession(boardId: string) {
     saveFailed,
     start,
     returnToFocus,
-    extend: () => update((s, n) => F.extend(s, n)),
-    startBreak: () => update((s, n) => F.startBreak(s, n)),
-    nextRound: () => update((s, n) => F.nextRound(s, n)),
+    extend: () => update(F.extend),
+    startBreak: () => update(F.startBreak),
+    nextRound: () => update(F.nextRound),
     end,
     dismissSummary: () => setSummary(null),
     recordPage: (docId: string, page: number) => update((s) => F.withPage(s, docId, page)),

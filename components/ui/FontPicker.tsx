@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { useDismiss } from "@/components/ui/useDismiss";
 import { HANDWRITING_FONTS, getFont, type FontId } from "@/lib/handwriting-fonts";
 
 /** A dropdown that shows every font name written in its own handwriting. */
@@ -15,19 +16,7 @@ export default function FontPicker({
   const root = useRef<HTMLDivElement>(null);
   const current = getFont(value);
 
-  useEffect(() => {
-    if (!open) return;
-    const away = (e: MouseEvent) => {
-      if (!root.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("mousedown", away);
-    document.addEventListener("keydown", esc);
-    return () => {
-      document.removeEventListener("mousedown", away);
-      document.removeEventListener("keydown", esc);
-    };
-  }, [open]);
+  useDismiss(open, root, () => setOpen(false));
 
   return (
     <div ref={root} className="relative">

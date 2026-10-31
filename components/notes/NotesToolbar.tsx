@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
+import { useDismiss } from "@/components/ui/useDismiss";
 import { INK_COLORS, type FontId } from "@/lib/handwriting-fonts";
 import FontPicker from "@/components/ui/FontPicker";
 
@@ -64,19 +65,7 @@ export default function NotesToolbar({
   const [colorOpen, setColorOpen] = useState(false);
   const colorRoot = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!colorOpen) return;
-    const away = (e: MouseEvent) => {
-      if (!colorRoot.current?.contains(e.target as Node)) setColorOpen(false);
-    };
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && setColorOpen(false);
-    document.addEventListener("mousedown", away);
-    document.addEventListener("keydown", esc);
-    return () => {
-      document.removeEventListener("mousedown", away);
-      document.removeEventListener("keydown", esc);
-    };
-  }, [colorOpen]);
+  useDismiss(colorOpen, colorRoot, () => setColorOpen(false));
 
   const sep = <span className="mx-1.5 h-[22px] w-px flex-none bg-[var(--color-divider)]" aria-hidden />;
 

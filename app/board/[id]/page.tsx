@@ -256,9 +256,13 @@ export default function BoardPage() {
 
   const [jump, setJump] = useState<{ page: number; rect?: NoteSource["rect"]; nonce: number } | null>(null);
 
+  function ensurePdfVisible() {
+    if (!board?.paneVisibility.pdf) save({ paneVisibility: { pdf: true, notes: board?.paneVisibility.notes ?? true } });
+  }
+
   function jumpToSource(src: NoteSource) {
     if (src.docId !== activeId) selectDoc(src.docId);
-    if (!board?.paneVisibility.pdf) save({ paneVisibility: { pdf: true, notes: board?.paneVisibility.notes ?? true } });
+    ensurePdfVisible();
     setJump({ page: src.page, rect: src.rect, nonce: Date.now() });
   }
 
@@ -274,7 +278,7 @@ export default function BoardPage() {
       : activeId
         ? { docId: activeId, page: activeDoc?.lastPage ?? 1 }
         : undefined;
-    if (!board?.paneVisibility.pdf) save({ paneVisibility: { pdf: true, notes: board?.paneVisibility.notes ?? true } });
+    ensurePdfVisible();
     await focus.start(opts, first);
   }
 

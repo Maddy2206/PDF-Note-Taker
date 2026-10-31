@@ -46,7 +46,7 @@ export default function DashboardPage() {
       .catch(() => {});
   }, []);
 
-  // "/" jumps to search, like the design's library.
+  // "/" focuses the search box.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const t = e.target as HTMLElement;

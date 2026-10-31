@@ -33,6 +33,7 @@ export function newSession(
   now: number,
   firstPage?: string,
 ): FocusSession {
+  const focusMinutes = clamp(opts.focusMinutes, FOCUS_LIMITS.focusMinutes);
   return {
     id: crypto.randomUUID(),
     boardId,
@@ -40,13 +41,13 @@ export function newSession(
     status: "active",
     goal: opts.goal?.trim() || undefined,
     target: opts.target,
-    focusMinutes: clamp(opts.focusMinutes, FOCUS_LIMITS.focusMinutes),
+    focusMinutes,
     breakMinutes: clamp(opts.breakMinutes, FOCUS_LIMITS.breakMinutes),
     rounds: clamp(opts.rounds, FOCUS_LIMITS.rounds),
     round: 1,
     phase: "focus",
     phaseStartedAt: now,
-    phaseEndsAt: now + clamp(opts.focusMinutes, FOCUS_LIMITS.focusMinutes) * 60_000,
+    phaseEndsAt: now + focusMinutes * 60_000,
     focusedMs: 0,
     awayCount: 0,
     pagesSeen: firstPage ? [firstPage] : [],
@@ -64,22 +65,17 @@ export function focusedSoFar(s: FocusSession, now: number): number {
   return s.focusedMs + Math.max(0, Math.min(now, s.phaseEndsAt, s.endedAt ?? Infinity) - s.phaseStartedAt);
 }
 
-/** Banks the running focus phase into focusedMs. */
-function bank(s: FocusSession, now: number): number {
-  return focusedSoFar(s, now);
-}
-
 /** Adds 5 minutes. After the round ended, the gap before clicking isn't counted as focus. */
 export function extend(s: FocusSession, now: number): FocusSession {
   if (now < s.phaseEndsAt) return { ...s, phaseEndsAt: s.phaseEndsAt + EXTEND_MS };
-  return { ...s, focusedMs: bank(s, now), phaseStartedAt: now, phaseEndsAt: now + EXTEND_MS };
+  return { ...s, focusedMs: focusedSoFar(s, now), phaseStartedAt: now, phaseEndsAt: now + EXTEND_MS };
 }
 
 /** Focus round finished: start its break. */
 export function startBreak(s: FocusSession, now: number): FocusSession {
   return {
     ...s,
-    focusedMs: bank(s, now),
+    focusedMs: focusedSoFar(s, now),
     phase: "break",
     phaseStartedAt: now,
     phaseEndsAt: now + s.breakMinutes * 60_000,
@@ -88,7 +84,7 @@ export function startBreak(s: FocusSession, now: number): FocusSession {
 
 /** Next focus round (after a break, or skipping it). */
 export function nextRound(s: FocusSession, now: number): FocusSession {
-  const focused = s.phase === "focus" ? bank(s, now) : s.focusedMs;
+  const focused = s.phase === "focus" ? focusedSoFar(s, now) : s.focusedMs;
   return {
     ...s,
     focusedMs: focused,
@@ -103,7 +99,7 @@ export function finish(s: FocusSession, now: number, early: boolean): FocusSessi
   const end = s.phase === "focus" ? Math.min(now, s.phaseEndsAt) : s.phaseStartedAt;
   return {
     ...s,
-    focusedMs: bank(s, now),
+    focusedMs: focusedSoFar(s, now),
     status: early ? "ended-early" : "completed",
     endedAt: Math.max(end, s.startedAt),
   };
