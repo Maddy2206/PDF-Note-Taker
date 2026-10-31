@@ -4,13 +4,17 @@
  * Browsers only allow audio after a user gesture, so call `ambient.unlock()` from a click handler.
  */
 
-export type SoundId = "off" | "rain" | "brown" | "pink" | "theta" | "alpha" | "beta";
+export type SoundId = "off" | "rain" | "ocean" | "coffee" | "brown" | "pink" | "white" | "lofi" | "theta" | "alpha" | "beta";
 
 export const SOUNDS: { id: SoundId; label: string; description: string }[] = [
   { id: "off", label: "Off", description: "No background sound." },
   { id: "rain", label: "Rain", description: "Steady rainfall with soft drops." },
+  { id: "coffee", label: "Coffee shop", description: "Quiet café chatter with the odd cup clink." },
+  { id: "ocean", label: "Ocean", description: "Slow waves washing in and out." },
   { id: "brown", label: "Brown noise", description: "A deep rumble that masks voices and traffic." },
   { id: "pink", label: "Pink noise", description: "A softer, balanced hiss, like distant wind or waves." },
+  { id: "white", label: "White noise", description: "A bright, even hiss that covers background sound." },
+  { id: "lofi", label: "Lo-fi", description: "Mellow jazzy chords with a soft beat and vinyl crackle." },
   { id: "theta", label: "Theta beats", description: "6 Hz binaural beat for calm, creative work. Use headphones." },
   { id: "alpha", label: "Alpha beats", description: "10 Hz binaural beat for relaxed focus. Use headphones." },
   { id: "beta", label: "Beta beats", description: "18 Hz binaural beat for alert, active study. Use headphones." },
@@ -181,6 +185,165 @@ const pink: Builder = (c, out) => {
   return () => src.stop();
 };
 
+/** Slowly moves `target` up and down by `depth` around its current value. */
+function wobble(c: AudioContext, rate: number, depth: number, target: AudioParam) {
+  const o = c.createOscillator();
+  const g = c.createGain();
+  o.frequency.value = rate;
+  g.gain.value = depth;
+  o.connect(g).connect(target);
+  o.start();
+  return o;
+}
+
+/** A very short filtered noise burst (drop, click, hat, snare). */
+function burst(c: AudioContext, dest: AudioNode, t: number, dur: number, type: BiquadFilterType, freq: number, peak: number, q = 1) {
+  const src = c.createBufferSource();
+  src.buffer = noise(c, "white");
+  const env = c.createGain();
+  env.gain.setValueAtTime(0.0001, t);
+  env.gain.exponentialRampToValueAtTime(peak, t + Math.min(0.005, dur / 3));
+  env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(filter(c, type, freq, q)).connect(env).connect(dest);
+  src.start(t, Math.random() * (BUFFER_SECONDS - 1));
+  src.stop(t + dur + 0.02);
+}
+
+/** A tone with a fast attack and a decay to silence. */
+function tone(c: AudioContext, dest: AudioNode, t: number, type: OscillatorType, freq: number, dur: number, peak: number, attack = 0.01) {
+  const o = c.createOscillator();
+  const env = c.createGain();
+  o.type = type;
+  o.frequency.value = freq;
+  o.detune.value = (Math.random() - 0.5) * 12;
+  env.gain.setValueAtTime(0.0001, t);
+  env.gain.exponentialRampToValueAtTime(peak, t + attack);
+  env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(env).connect(dest);
+  o.start(t);
+  o.stop(t + dur + 0.02);
+}
+
+const white: Builder = (c, out) => {
+  const src = loopSource(c, "white");
+  const g = c.createGain();
+  g.gain.value = 0.45;
+  src.connect(filter(c, "lowpass", 9000)).connect(g).connect(out);
+  return () => src.stop();
+};
+
+const ocean: Builder = (c, out) => {
+  // Waves: filtered noise whose loudness and brightness swell together.
+  const wave = loopSource(c, "pink");
+  const lp = filter(c, "lowpass", 900);
+  const g = c.createGain();
+  g.gain.value = 0.5;
+  wave.connect(lp).connect(g).connect(out);
+  const lfos = [wobble(c, 0.09, 0.4, g.gain), wobble(c, 0.09, 500, lp.frequency)];
+  // A steady low rumble underneath.
+  const deep = loopSource(c, "brown");
+  const dg = c.createGain();
+  dg.gain.value = 0.45;
+  deep.connect(filter(c, "lowpass", 400)).connect(dg).connect(out);
+  return () => {
+    wave.stop();
+    deep.stop();
+    lfos.forEach((o) => o.stop());
+  };
+};
+
+const coffee: Builder = (c, out) => {
+  // Crowd murmur: a few band-limited noise layers that each rise and fall on their own.
+  const layers = [
+    { freq: 420, rate: 0.31 },
+    { freq: 760, rate: 0.17 },
+    { freq: 1150, rate: 0.23 },
+  ].map(({ freq, rate }) => {
+    const src = loopSource(c, "pink");
+    const g = c.createGain();
+    g.gain.value = 0.5;
+    src.connect(filter(c, "bandpass", freq, 0.8)).connect(g).connect(out);
+    return { src, lfo: wobble(c, rate, 0.25, g.gain) };
+  });
+  // Now and then, a cup or spoon clinks.
+  const timer = setInterval(() => {
+    if (Math.random() > 0.22 || c.state !== "running") return;
+    const t = c.currentTime;
+    const f = 2400 + Math.random() * 2200;
+    tone(c, out, t, "sine", f, 0.3, 0.035);
+    tone(c, out, t + 0.02, "sine", f * 1.52, 0.2, 0.02);
+  }, 700);
+  return () => {
+    clearInterval(timer);
+    layers.forEach(({ src, lfo }) => {
+      src.stop();
+      lfo.stop();
+    });
+  };
+};
+
+const BPM = 70;
+const EIGHTH = 60 / BPM / 2;
+/** Four mellow jazz chords, one per bar: a bass note plus voicing. */
+const LOFI_CHORDS = [
+  { bass: 73.42, notes: [220, 261.63, 329.63, 392, 440] }, // Dm9-ish
+  { bass: 98, notes: [196, 246.94, 349.23, 440] }, // G7
+  { bass: 130.81, notes: [196, 246.94, 293.66, 329.63] }, // Cmaj9-ish
+  { bass: 110, notes: [220, 261.63, 329.63, 392] }, // Am7
+];
+
+const lofi: Builder = (c, out) => {
+  // Everything musical goes through a lowpass for a dusty, tape-like sound.
+  const bus = c.createGain();
+  bus.gain.value = 0.8;
+  bus.connect(filter(c, "lowpass", 2600)).connect(out);
+  const pad = c.createGain();
+  pad.gain.value = 1;
+  pad.connect(filter(c, "lowpass", 1500)).connect(bus);
+
+  let step = 0;
+  let next = c.currentTime + 0.1;
+  const play = () => {
+    while (next < c.currentTime + 0.8) {
+      const beat = step % 8;
+      const bar = Math.floor(step / 8) % LOFI_CHORDS.length;
+      const t = next + (Math.random() - 0.5) * 0.02;
+      if (beat === 0) {
+        const chord = LOFI_CHORDS[bar];
+        const len = EIGHTH * 8;
+        chord.notes.forEach((f, i) => tone(c, pad, t + i * 0.025, "triangle", f, len + 0.6, 0.05, 0.12));
+        tone(c, bus, t, "sine", chord.bass, len, 0.22, 0.03);
+      }
+      if (beat === 0 || beat === 5) {
+        const o = c.createOscillator();
+        const env = c.createGain();
+        o.frequency.setValueAtTime(130, t);
+        o.frequency.exponentialRampToValueAtTime(45, t + 0.14);
+        env.gain.setValueAtTime(0.35, t);
+        env.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+        o.connect(env).connect(bus);
+        o.start(t);
+        o.stop(t + 0.25);
+      }
+      if (beat === 2 || beat === 6) burst(c, bus, t, 0.14, "bandpass", 1800, 0.12);
+      if (beat % 2 === 0) burst(c, bus, t, 0.04, "highpass", 6000, 0.04);
+      next += EIGHTH;
+      step++;
+    }
+  };
+  play();
+  const timer = setInterval(play, 200);
+  // Vinyl crackle, outside the lowpass so it stays crisp.
+  const crackle = setInterval(() => {
+    if (Math.random() > 0.35 || c.state !== "running") return;
+    burst(c, out, c.currentTime, 0.006, "bandpass", 2500 + Math.random() * 3000, 0.06 + Math.random() * 0.08);
+  }, 70);
+  return () => {
+    clearInterval(timer);
+    clearInterval(crackle);
+  };
+};
+
 /** Two sine tones a few Hz apart, one per ear; the brain perceives the difference as a slow beat. */
 const beats =
   (hz: number): Builder =>
@@ -202,8 +365,12 @@ const beats =
 
 const BUILDERS: Record<Exclude<SoundId, "off">, Builder> = {
   rain,
+  ocean,
+  coffee,
   brown,
   pink,
+  white,
+  lofi,
   theta: beats(6),
   alpha: beats(10),
   beta: beats(18),

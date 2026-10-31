@@ -35,7 +35,7 @@ IndexedDB `pdf-note-taker`, version 3. Stores: `boards`, `highlights` (indexed b
 
 ### Focus sounds
 
-`lib/ambient.ts` is a singleton Web Audio engine: looped, click-free noise buffers (pink, brown) and oscillators (binaural beats, one tone per ear), plus rain built from filtered pink noise with random drops. One sound plays at a time and changes crossfade. `useAmbientSound(session, over, needsReturn)` plays it only during an active focus round and fades it out otherwise; mute is per session. The choice is not stored on `FocusSession`. Browsers need a user gesture for audio, so `ambient.unlock()` is called from the Start and Back to focus clicks.
+`lib/ambient.ts` is a singleton Web Audio engine: looped, click-free noise buffers (white, pink, brown) and oscillators (binaural beats, one tone per ear). Rain, ocean and coffee shop are filtered noise with slow LFO swells plus random drops or clinks; lo-fi is a small look-ahead scheduler playing a four-chord loop, soft drums and vinyl crackle. One sound plays at a time and changes crossfade. `useAmbientSound(session, over, needsReturn)` plays it only during an active focus round and fades it out otherwise; mute is per session. The choice is not stored on `FocusSession`. Browsers need a user gesture for audio, so `ambient.unlock()` is called from the Start and Back to focus clicks.
 
 ## Build notes
 
