@@ -26,6 +26,10 @@ import PdfViewer, { type PendingSelection } from "@/components/pdf/PdfViewer";
 import type { DiagramImage } from "@/components/pdf/DiagramSelect";
 import PdfTabs from "@/components/pdf/PdfTabs";
 import SplitLayout from "@/components/workspace/SplitLayout";
+import { useFocusSession } from "@/components/focus/useFocusSession";
+import FocusBar from "@/components/focus/FocusBar";
+import FocusOverlay from "@/components/focus/FocusOverlay";
+import FocusSetupDialog from "@/components/focus/FocusSetupDialog";
 
 // Excalidraw touches `window`, so it only loads in the browser.
 const NotesCanvas = dynamic(() => import("@/components/notes/NotesCanvas"), {
@@ -80,6 +84,8 @@ export default function BoardPage() {
     try { localStorage.setItem("pdfnote.font", f); } catch {}
   }
   const handleApi = useCallback((a: ExcalidrawImperativeAPI) => setApi(a), []);
+  const focus = useFocusSession(id);
+  const [setupOpen, setSetupOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -215,6 +221,7 @@ export default function BoardPage() {
     }));
     await Promise.all(created.map(saveHighlight));
     setHighlights((prev) => [...prev, ...created]);
+    focus.countHighlight();
     if (!board?.paneVisibility.notes) save({ paneVisibility: { pdf: true, notes: true } });
   }
 
@@ -247,12 +254,28 @@ export default function BoardPage() {
     removeNote(api, noteId);
   }
 
-  const [jump, setJump] = useState<{ page: number; rect: NoteSource["rect"]; nonce: number } | null>(null);
+  const [jump, setJump] = useState<{ page: number; rect?: NoteSource["rect"]; nonce: number } | null>(null);
 
   function jumpToSource(src: NoteSource) {
     if (src.docId !== activeId) selectDoc(src.docId);
     if (!board?.paneVisibility.pdf) save({ paneVisibility: { pdf: true, notes: board?.paneVisibility.notes ?? true } });
     setJump({ page: src.page, rect: src.rect, nonce: Date.now() });
+  }
+
+  async function startFocus(opts: Parameters<typeof focus.start>[0]) {
+    setSetupOpen(false);
+    const t = opts.target;
+    if (t) {
+      if (t.docId !== activeId) selectDoc(t.docId);
+      setJump({ page: t.fromPage, nonce: Date.now() });
+    }
+    const first = t
+      ? { docId: t.docId, page: t.fromPage }
+      : activeId
+        ? { docId: activeId, page: activeDoc?.lastPage ?? 1 }
+        : undefined;
+    if (!board?.paneVisibility.pdf) save({ paneVisibility: { pdf: true, notes: board?.paneVisibility.notes ?? true } });
+    await focus.start(opts, first);
   }
 
   async function importDiagram(img: DiagramImage) {
@@ -264,6 +287,7 @@ export default function BoardPage() {
       const { addDiagramImage } = await import("@/components/notes/diagram");
       const { source, ...image } = img;
       addDiagramImage(api, image, source && { docId: activeId ?? id, ...source });
+      focus.countDiagram();
     } catch (e) {
       console.error("addDiagramImage failed", e);
       setNotice("Couldn't add the diagram to the board. Please try again.");
@@ -318,8 +342,41 @@ export default function BoardPage() {
   }
   if (!board || !activeDoc) return <p className="p-6 text-zinc-500">Loading...</p>;
 
+  const layoutSwitch = (
+    <div className="seg" role="group" aria-label="Layout">
+      {(
+        [
+          ["PDF", { pdf: true, notes: false }],
+          ["Split", { pdf: true, notes: true }],
+          ["Notes", { pdf: false, notes: true }],
+        ] as const
+      ).map(([label, v]) => (
+        <button
+          key={label}
+          className="seg-opt"
+          aria-pressed={
+            board.paneVisibility.pdf === v.pdf && board.paneVisibility.notes === v.notes
+          }
+          onClick={() => save({ paneVisibility: { ...v } })}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <div className="flex h-screen flex-col">
+      {focus.session ? (
+        <FocusBar session={focus.session} boardName={board.name} onEnd={() => focus.end(true)}>
+          {(saveState === "error" || focus.saveFailed) && (
+            <span role="alert" className="whitespace-nowrap text-xs font-bold text-[var(--color-accent-700)]">
+              Not saved
+            </span>
+          )}
+          {layoutSwitch}
+        </FocusBar>
+      ) : (
       <header className="flex h-14 flex-none items-center gap-2.5 border-b-2 border-[var(--color-divider)] pl-2 pr-3">
         <Link href="/dashboard" aria-label="Back to boards" className="btn btn-icon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -350,6 +407,13 @@ export default function BoardPage() {
           </span>
           {saveState === "saving" ? "Saving…" : saveState === "error" ? "Not saved" : "Saved"}
         </span>
+        <button
+          onClick={() => setSetupOpen(true)}
+          className="btn btn-secondary"
+          title="Start a full-screen focus session"
+        >
+          Focus
+        </button>
         <PageStyleMenu
           paper={board.paper}
           color={paperColorOf(board.paper, board.paperColor)}
@@ -362,27 +426,9 @@ export default function BoardPage() {
         >
           {downloading ? "Preparing..." : "Download PDF"}
         </button>
-        <div className="seg" role="group" aria-label="Layout">
-          {(
-            [
-              ["PDF", { pdf: true, notes: false }],
-              ["Split", { pdf: true, notes: true }],
-              ["Notes", { pdf: false, notes: true }],
-            ] as const
-          ).map(([label, v]) => (
-            <button
-              key={label}
-              className="seg-opt"
-              aria-pressed={
-                board.paneVisibility.pdf === v.pdf && board.paneVisibility.notes === v.notes
-              }
-              onClick={() => save({ paneVisibility: { ...v } })}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        {layoutSwitch}
       </header>
+      )}
       {notice && (
         <p role="status" className="bg-amber-100 px-4 py-1 text-sm text-amber-900">
           {notice}{" "}
@@ -407,6 +453,7 @@ export default function BoardPage() {
                 onRename={(docId, name) => patchDoc(docId, { name })}
                 onRemove={removePdf}
                 onError={setNotice}
+                locked={!!focus.session}
               />
               <div className="min-h-0 flex-1">
                 {pdf ? (
@@ -426,7 +473,10 @@ export default function BoardPage() {
                     jump={jump}
                     onJumpDone={() => setJump(null)}
                     initialPage={activeDoc.lastPage}
-                    onPageChange={(lastPage) => patchDoc(activeDoc.id, { lastPage })}
+                    onPageChange={(lastPage) => {
+                      patchDoc(activeDoc.id, { lastPage });
+                      focus.recordPage(activeDoc.id, lastPage);
+                    }}
                     onLoaded={(pageCount) => patchDoc(activeDoc.id, { pageCount })}
                     ink={ink}
                     fontId={fontId}
@@ -458,6 +508,27 @@ export default function BoardPage() {
           }
         />
       </div>
+      {setupOpen && !focus.session && (
+        <FocusSetupDialog
+          docs={docs}
+          activeDocId={activeDoc.id}
+          onStart={startFocus}
+          onClose={() => setSetupOpen(false)}
+        />
+      )}
+      <FocusOverlay
+        session={focus.session}
+        summary={focus.summary}
+        over={focus.over}
+        needsReturn={focus.needsReturn}
+        onReturn={focus.returnToFocus}
+        onExtend={focus.extend}
+        onStartBreak={focus.startBreak}
+        onNextRound={focus.nextRound}
+        onFinish={() => focus.end(false)}
+        onEnd={() => focus.end(true)}
+        onCloseSummary={focus.dismissSummary}
+      />
     </div>
   );
 }

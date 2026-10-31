@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { deleteBoard, listBoards, updateBoard } from "@/lib/storage";
-import type { Board } from "@/lib/types";
+import { deleteBoard, listBoards, listFocusSessions, updateBoard } from "@/lib/storage";
+import type { Board, FocusSession } from "@/lib/types";
+import FocusStats from "@/components/dashboard/FocusStats";
 import BoardCard from "@/components/dashboard/BoardCard";
 import CreateBoardDialog from "@/components/dashboard/CreateBoardDialog";
 
@@ -24,6 +25,8 @@ export default function DashboardPage() {
   const [boards, setBoards] = useState<Board[] | null>(null);
   const [creating, setCreating] = useState(false);
   const [storageError, setStorageError] = useState(false);
+  const [sessions, setSessions] = useState<FocusSession[]>([]);
+  const [statsNow, setStatsNow] = useState(0);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<Sort>("recent");
   const searchRef = useRef<HTMLInputElement>(null);
@@ -35,6 +38,12 @@ export default function DashboardPage() {
         setStorageError(true);
         setBoards([]);
       });
+    listFocusSessions()
+      .then((l) => {
+        setSessions(l);
+        setStatsNow(Date.now());
+      })
+      .catch(() => {});
   }, []);
 
   // "/" jumps to search, like the design's library.
@@ -153,6 +162,8 @@ export default function DashboardPage() {
               storage isn&apos;t blocked (for example in a private window) and reload.
             </p>
           )}
+
+          <FocusStats sessions={sessions} now={statsNow} />
 
           <section aria-labelledby="boards" className="pt-8">
             <div className="mb-3 flex items-baseline gap-3">

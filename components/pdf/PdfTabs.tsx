@@ -13,6 +13,7 @@ export default function PdfTabs({
   onRename,
   onRemove,
   onError,
+  locked = false,
 }: {
   docs: PdfDoc[];
   activeId: string;
@@ -21,6 +22,8 @@ export default function PdfTabs({
   onRename: (id: string, name: string) => void;
   onRemove: (id: string) => void | Promise<void>;
   onError: (message: string) => void;
+  /** Focus mode: no adding or removing PDFs (no file pickers or dialogs). */
+  locked?: boolean;
 }) {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -105,7 +108,7 @@ export default function PdfTabs({
                   {d.name}
                 </button>
               )}
-              {docs.length > 1 && renaming !== d.id && (
+              {!locked && docs.length > 1 && renaming !== d.id && (
                 <button
                   aria-label={`Remove ${d.name}`}
                   title="Remove this PDF"
@@ -119,6 +122,7 @@ export default function PdfTabs({
           );
         })}
       </div>
+      {!locked && (
       <button
         onClick={() => fileRef.current?.click()}
         aria-label="Add PDFs to this board"
@@ -127,6 +131,7 @@ export default function PdfTabs({
       >
         <span aria-hidden className="text-lg leading-none">+</span> Add PDF
       </button>
+      )}
       <input
         ref={fileRef}
         type="file"

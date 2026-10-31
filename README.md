@@ -24,7 +24,8 @@ Open <http://localhost:3000>. A sample PDF is at `public/sample.pdf` (also serve
 5. Select any note (text or diagram) and click the **Go to source** chip that appears next to it after a moment (it does not show while you drag, write or edit, and fades after a few seconds). The PDF switches to the right tab, scrolls to the excerpt or figure and flashes it.
 6. Draw and write with the Excalidraw tools. **Ctrl+Z** undoes, **Ctrl+Y** redoes. Switch the paper between **Lined**, **Dotted**, **Grid** and **Blank**, with 10 page colors.
 7. Reload: the notes, highlights, layout and reading position come back. **Download PDF** saves your notes.
-7. On the dashboard, search boards (press `/`), sort them, and rename or delete a board from its card.
+8. Click **Focus** to start a full-screen Pomodoro session: pick a timer, an optional goal and an optional page target. The header becomes a slim countdown bar; hold **Hold to end** for 3 seconds to quit early. Leaving full screen or switching tabs doesn't stop the timer, it is counted and you can return with **Back to focus**. A summary appears at the end, and the dashboard shows today, 7-day totals and your streak.
+9. On the dashboard, search boards (press `/`), sort them, and rename or delete a board from its card.
 
 Boards live in the browser you created them in, so a deployed copy starts empty for each visitor.
 
@@ -34,13 +35,14 @@ Boards live in the browser you created them in, so a deployed copy starts empty 
 - **No file size or page limit** is enforced; very large PDFs are loaded into memory and may be slow or hit browser storage quota.
 - **Scanned PDFs** (no text layer) cannot be highlighted; diagram clipping still works.
 - **Exported PDFs are images** of the notes (not selectable or searchable text).
+- Focus mode can't block OS notifications or stop Esc/Alt+Tab (turn on Do Not Disturb yourself); it records leaving instead. Pages "visited" are pages scrolled into view, not proof of reading.
 - No mobile layout, accounts or collaboration. Diagrams clipped before the source-link feature have no source to jump to.
 
 ## Project structure
 
 ```
 app/          routes: / (landing), /dashboard, /board/[id] (workspace)
-components/   pdf/ (viewer), notes/ (Excalidraw canvas), dashboard/, landing/, ui/, workspace/
+components/   pdf/ (viewer), notes/ (Excalidraw canvas), focus/ (focus mode), dashboard/, landing/, ui/, workspace/
 lib/          storage.ts (IndexedDB), export-pdf.ts, note-image.ts, paper.ts, placement.ts, ...
 public/       sample.pdf
 ```

@@ -69,6 +69,35 @@ export interface Highlight {
   noteId?: string;
 }
 
+export type FocusStatus = "active" | "completed" | "ended-early";
+
+/** One Pomodoro-style focus session on a board. Times are epoch ms. */
+export interface FocusSession {
+  id: string;
+  boardId: string;
+  startedAt: number;
+  endedAt?: number;
+  status: FocusStatus;
+  goal?: string;
+  /** Optional reading target: a page range in one PDF. */
+  target?: { docId: string; fromPage: number; toPage: number };
+  focusMinutes: number;
+  breakMinutes: number;
+  rounds: number;
+  /** Current round, 1-based. */
+  round: number;
+  phase: "focus" | "break";
+  phaseStartedAt: number;
+  phaseEndsAt: number;
+  /** Focus time already credited from finished or ended phases. */
+  focusedMs: number;
+  awayCount: number;
+  /** Distinct "docId:page" keys opened during the session. */
+  pagesSeen: string[];
+  highlightsAdded: number;
+  diagramsAdded: number;
+}
+
 /** The saved Excalidraw notes for a board. */
 export interface SceneRecord {
   boardId: string;

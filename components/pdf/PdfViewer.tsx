@@ -277,7 +277,7 @@ export default function PdfViewer({
   onRemoveNote?: (highlightId: string) => void;
   hasNote?: (highlightId: string) => boolean;
   /** Scroll to this spot and flash it (a jump from a note to its source). */
-  jump?: { page: number; rect: HighlightRect; nonce: number } | null;
+  jump?: { page: number; rect?: HighlightRect; nonce: number } | null;
   onJumpDone?: () => void;
   /** Light color of the marker drawn over the PDF text. */
   marker: string;
@@ -433,17 +433,22 @@ export default function PdfViewer({
       if (!target) return;
       const box = target.getBoundingClientRect();
       el.scrollTop =
-        box.top - el.getBoundingClientRect().top + el.scrollTop + jump.rect.y * box.height - el.clientHeight / 3;
+        box.top -
+        el.getBoundingClientRect().top +
+        el.scrollTop +
+        (jump.rect ? jump.rect.y * box.height - el.clientHeight / 3 : 0);
       updateCurrent();
     };
     const timers = [0, 100, 250].map((ms) => setTimeout(goto, ms));
-    setFlash({ page: jump.page, rect: jump.rect });
+    const rect = jump.rect;
+    const flashTimer = rect ? setTimeout(() => setFlash({ page: jump.page, rect }), 0) : undefined;
     const done = setTimeout(() => {
       setFlash(null);
       onJumpDoneRef.current?.();
     }, 2200);
     return () => {
       timers.forEach(clearTimeout);
+      clearTimeout(flashTimer);
       clearTimeout(done);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

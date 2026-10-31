@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import type { Board, Highlight, PdfDoc, SceneRecord } from "./types";
+import type { Board, FocusSession, Highlight, PdfDoc, SceneRecord } from "./types";
 
 interface NoteTakerDB extends DBSchema {
   boards: { key: string; value: Board };
@@ -17,14 +17,24 @@ interface NoteTakerDB extends DBSchema {
     indexes: { "by-board": string };
   };
   scenes: { key: string; value: SceneRecord };
+  /** Version 3. Kept when a board is deleted, so history and streaks survive. */
+  focusSessions: { key: string; value: FocusSession };
 }
 
 let dbPromise: Promise<IDBPDatabase<NoteTakerDB>> | null = null;
 
 function db() {
   if (!dbPromise) {
-    dbPromise = openDB<NoteTakerDB>("pdf-note-taker", 2, {
+    dbPromise = openDB<NoteTakerDB>("pdf-note-taker", 3, {
+      // Another tab is upgrading: close this connection so it isn't blocked.
+      blocking() {
+        dbPromise?.then((c) => c.close()).catch(() => {});
+        dbPromise = null;
+      },
       async upgrade(d, oldVersion, _newVersion, tx) {
+        if (oldVersion < 3) {
+          d.createObjectStore("focusSessions", { keyPath: "id" });
+        }
         if (oldVersion < 1) {
           d.createObjectStore("boards", { keyPath: "id" });
           d.createObjectStore("highlights", { keyPath: "id" }).createIndex(
@@ -243,4 +253,31 @@ export async function loadScene(
 
 export async function saveScene(scene: SceneRecord): Promise<void> {
   await (await db()).put("scenes", scene);
+}
+
+export async function saveFocusSession(s: FocusSession): Promise<void> {
+  await (await db()).put("focusSessions", s);
+}
+
+export async function listFocusSessions(): Promise<FocusSession[]> {
+  const all = await (await db()).getAll("focusSessions");
+  return all.sort((a, b) => b.startedAt - a.startedAt);
+}
+
+/** The board's unfinished session, if any (the newest one). */
+export async function getActiveFocusSession(boardId: string): Promise<FocusSession | undefined> {
+  const all = await listFocusSessions();
+  return all.find((s) => s.boardId === boardId && s.status === "active");
+}
+
+/** Closes stale active sessions of a board (e.g. left over from a crashed tab) except `keepId`. */
+export async function closeOtherActiveSessions(boardId: string, keepId: string): Promise<void> {
+  const d = await db();
+  const tx = d.transaction("focusSessions", "readwrite");
+  for (const s of await tx.store.getAll()) {
+    if (s.boardId === boardId && s.status === "active" && s.id !== keepId) {
+      await tx.store.put({ ...s, status: "ended-early", endedAt: s.phaseStartedAt });
+    }
+  }
+  await tx.done;
 }
