@@ -24,7 +24,7 @@ Open <http://localhost:3000>. A sample PDF is at `public/sample.pdf` (also serve
 5. Select any note (text or diagram) and click the **Go to source** chip that appears next to it after a moment (it does not show while you drag, write or edit, and fades after a few seconds). The PDF switches to the right tab, scrolls to the excerpt or figure and flashes it.
 6. Draw and write with the Excalidraw tools. **Ctrl+Z** undoes, **Ctrl+Y** redoes. Switch the paper between **Lined**, **Dotted**, **Grid** and **Blank**, with 10 page colors.
 7. Reload: the notes, highlights, layout and reading position come back. **Download PDF** saves your notes.
-8. Click **Focus** to start a full-screen Pomodoro session: pick a timer, an optional goal and an optional page target. The header becomes a slim countdown bar; hold **Hold to end** for 3 seconds to quit early. Leaving full screen or switching tabs doesn't stop the timer, it is counted and you can return with **Back to focus**. A summary appears at the end, and the dashboard shows today, 7-day totals and your streak.
+8. Click **Focus** to start a full-screen Pomodoro session: pick a timer, an optional goal and an optional page target. The header becomes a slim countdown bar; hold **Hold to end** for 3 seconds to quit early. Leaving full screen or switching tabs doesn't stop the timer, it is counted and you can return with **Back to focus**. Pick a **focus sound** (rain, brown/pink noise or alpha/theta/beta binaural beats) in the setup dialog or from the speaker button in the bar; it plays during focus rounds and fades out for breaks and when the session ends. A summary appears at the end, and the dashboard shows today, 7-day totals and your streak.
 9. On the dashboard, search boards (press `/`), sort them, and rename or delete a board from its card.
 
 Boards live in the browser you created them in, so a deployed copy starts empty for each visitor.
@@ -35,6 +35,7 @@ Boards live in the browser you created them in, so a deployed copy starts empty 
 - **No file size or page limit** is enforced; very large PDFs are loaded into memory and may be slow or hit browser storage quota.
 - **Scanned PDFs** (no text layer) cannot be highlighted; diagram clipping still works.
 - **Exported PDFs are images** of the notes (not selectable or searchable text).
+- Focus sounds are generated in the browser (no downloads). Binaural beats only work with headphones, and after a reload sound restarts once you click **Back to focus**. Their effect on focus varies between people.
 - Focus mode can't block OS notifications or stop Esc/Alt+Tab (turn on Do Not Disturb yourself); it records leaving instead. Pages "visited" are pages scrolled into view, not proof of reading.
 - No mobile layout, accounts or collaboration. Diagrams clipped before the source-link feature have no source to jump to.
 

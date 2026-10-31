@@ -12,8 +12,8 @@ Client-only Next.js (App Router) app. There is no backend, API or authentication
 | `components/pdf/` | `PdfViewer` (pdf.js rendering, highlights), `PdfTabs`, `SelectionPopout`, `DiagramSelect` |
 | `components/notes/` | `NotesCanvas` (Excalidraw wrapper, autosave), toolbar, inline editor, paper background, helpers |
 | `components/workspace/SplitLayout.tsx` | Resizable PDF/notes split |
-| `components/focus/` | Focus mode: `useFocusSession` (state, saving, fullscreen, absence detection, chime), `FocusSetupDialog`, `FocusBar`, `FocusOverlay`, `HoldToExit`, `useNow` |
-| `lib/` | `storage.ts` (IndexedDB), `types.ts`, `export-pdf.ts`, `note-image.ts`, `diagram-region.ts`, `paper.ts`, `pages.ts`, `placement.ts`, `handwriting-fonts.ts`, `pdf-validate.ts`, `visible-page.ts`, `note-source.ts`, `focus.ts` (pure session/timer/stats logic) |
+| `components/focus/` | Focus mode: `useFocusSession` (state, saving, fullscreen, absence detection, chime), `useAmbientSound` (focus sound choice + playback tied to the session), `SoundPicker`, `SoundMenu`, `FocusSetupDialog`, `FocusBar`, `FocusOverlay`, `HoldToExit`, `useNow` |
+| `lib/` | `storage.ts` (IndexedDB), `types.ts`, `export-pdf.ts`, `note-image.ts`, `diagram-region.ts`, `paper.ts`, `pages.ts`, `placement.ts`, `handwriting-fonts.ts`, `pdf-validate.ts`, `visible-page.ts`, `note-source.ts`, `focus.ts` (pure session/timer/stats logic), `ambient.ts` (Web Audio focus-sound engine and saved choice) |
 
 ## Data flow
 
@@ -27,11 +27,15 @@ Client-only Next.js (App Router) app. There is no backend, API or authentication
 
 ## Storage (`lib/storage.ts`, via `idb`)
 
-IndexedDB `pdf-note-taker`, version 3. Stores: `boards`, `highlights` (indexed by board), `scenes` (keyed by `boardId`), `documents` (index `by-board`), `pdfBlobs` (keyed by `docId`), `focusSessions` (keyed by `id`, not deleted with a board). The v1 to v2 upgrade moved the old single-PDF store into `documents` and `pdfBlobs`; v3 added `focusSessions`, and the connection closes on `blocking` so a second tab can't stall an upgrade. localStorage holds only the last-used ink, font, marker and focus timer choice (`pdfnote.*` keys).
+IndexedDB `pdf-note-taker`, version 3. Stores: `boards`, `highlights` (indexed by board), `scenes` (keyed by `boardId`), `documents` (index `by-board`), `pdfBlobs` (keyed by `docId`), `focusSessions` (keyed by `id`, not deleted with a board). The v1 to v2 upgrade moved the old single-PDF store into `documents` and `pdfBlobs`; v3 added `focusSessions`, and the connection closes on `blocking` so a second tab can't stall an upgrade. localStorage holds only the last-used ink, font, marker, focus timer choice and focus sound/volume (`pdfnote.*` keys, the sound is `pdfnote.focusSound`).
 
 ## Focus mode
 
 `app/board/[id]/page.tsx` owns `useFocusSession(boardId)`. A session is one `FocusSession` record saved on every change; phases store `phaseEndsAt` timestamps, so reloads, sleep and throttled tabs stay accurate and an active session is resumed on load (shown behind "Back to focus", since full screen needs a click). `FocusBar` and `FocusOverlay` tick locally (`useNow`) so the board doesn't re-render each second. Absence = hidden tab, window blur or lost full screen, still true after 400 ms. The page reports PDF page changes, exported highlights and clipped diagrams into the session; `lib/focus.ts#focusStats` feeds the dashboard strip.
+
+### Focus sounds
+
+`lib/ambient.ts` is a singleton Web Audio engine: looped, click-free noise buffers (pink, brown) and oscillators (binaural beats, one tone per ear), plus rain built from filtered pink noise with random drops. One sound plays at a time and changes crossfade. `useAmbientSound(session, over, needsReturn)` plays it only during an active focus round and fades it out otherwise; mute is per session. The choice is not stored on `FocusSession`. Browsers need a user gesture for audio, so `ambient.unlock()` is called from the Start and Back to focus clicks.
 
 ## Build notes
 

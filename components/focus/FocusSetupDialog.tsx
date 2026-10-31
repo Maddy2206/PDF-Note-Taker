@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FocusSession, PdfDoc } from "@/lib/types";
 import { FOCUS_LIMITS, FOCUS_PRESETS, clamp } from "@/lib/focus";
+import { ambient } from "@/lib/ambient";
+import SoundPicker from "./SoundPicker";
+import type { AmbientControls } from "./useAmbientSound";
 
 type Opts = Pick<FocusSession, "focusMinutes" | "breakMinutes" | "rounds" | "goal" | "target">;
 
@@ -62,15 +65,25 @@ function Num({
 export default function FocusSetupDialog({
   docs,
   activeDocId,
+  audio,
   onStart,
   onClose,
 }: {
   docs: PdfDoc[];
   activeDocId: string;
+  audio: AmbientControls;
   onStart: (opts: Opts) => void;
   onClose: () => void;
 }) {
   const [saved] = useState(loadSaved);
+  const [preview, setPreview] = useState(false);
+
+  // Preview the chosen sound; it fades out when stopped or when the dialog closes.
+  useEffect(() => {
+    if (!preview || audio.sound === "off") return;
+    ambient.play(audio.sound);
+    return () => ambient.fadeOut(0.4);
+  }, [preview, audio.sound]);
   const [preset, setPreset] = useState(saved.preset);
   const [focusMinutes, setFocus] = useState(saved.focusMinutes);
   const [breakMinutes, setBreak] = useState(saved.breakMinutes);
@@ -192,6 +205,16 @@ export default function FocusSetupDialog({
               <Num label="From page" value={from} limits={[1, maxPage]} onChange={setFrom} />
               <Num label="To page" value={to} limits={[1, maxPage]} onChange={setTo} />
             </div>
+          )}
+        </div>
+
+        <div>
+          <span className="mb-1 block text-sm text-zinc-600">Focus sound (plays during focus rounds)</span>
+          <SoundPicker sound={audio.sound} volume={audio.volume} onSound={audio.setSound} onVolume={audio.setVolume} />
+          {audio.sound !== "off" && (
+            <button type="button" className="btn btn-secondary mt-3" onClick={() => setPreview((p) => !p)}>
+              {preview ? "Stop preview" : "Preview"}
+            </button>
           )}
         </div>
 

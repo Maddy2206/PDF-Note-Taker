@@ -30,6 +30,9 @@ import { useFocusSession } from "@/components/focus/useFocusSession";
 import FocusBar from "@/components/focus/FocusBar";
 import FocusOverlay from "@/components/focus/FocusOverlay";
 import FocusSetupDialog from "@/components/focus/FocusSetupDialog";
+import SoundMenu from "@/components/focus/SoundMenu";
+import { useAmbientSound } from "@/components/focus/useAmbientSound";
+import { ambient } from "@/lib/ambient";
 
 // Excalidraw touches `window`, so it only loads in the browser.
 const NotesCanvas = dynamic(() => import("@/components/notes/NotesCanvas"), {
@@ -85,6 +88,7 @@ export default function BoardPage() {
   }
   const handleApi = useCallback((a: ExcalidrawImperativeAPI) => setApi(a), []);
   const focus = useFocusSession(id);
+  const audio = useAmbientSound(focus.session, focus.over, focus.needsReturn);
   const [setupOpen, setSetupOpen] = useState(false);
 
   useEffect(() => {
@@ -279,6 +283,7 @@ export default function BoardPage() {
         ? { docId: activeId, page: activeDoc?.lastPage ?? 1 }
         : undefined;
     ensurePdfVisible();
+    ambient.unlock(); // inside the click, so the browser allows sound
     await focus.start(opts, first);
   }
 
@@ -378,6 +383,7 @@ export default function BoardPage() {
               Not saved
             </span>
           )}
+          <SoundMenu audio={audio} />
           {layoutSwitch}
         </FocusBar>
       ) : (
@@ -516,6 +522,7 @@ export default function BoardPage() {
         <FocusSetupDialog
           docs={docs}
           activeDocId={activeDoc.id}
+          audio={audio}
           onStart={startFocus}
           onClose={() => setSetupOpen(false)}
         />
@@ -525,7 +532,10 @@ export default function BoardPage() {
         summary={focus.summary}
         over={focus.over}
         needsReturn={focus.needsReturn}
-        onReturn={focus.returnToFocus}
+        onReturn={() => {
+          ambient.unlock(); // after a reload this click is what lets sound start again
+          return focus.returnToFocus();
+        }}
         onExtend={focus.extend}
         onStartBreak={focus.startBreak}
         onNextRound={focus.nextRound}
